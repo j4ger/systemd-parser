@@ -1,0 +1,16 @@
+COMMENT = _{ (("#" | ";") ~ (!NEWLINE ~ ANY)*) ~ NEWLINE }
+WHITESPACE = _{ " " | "\t" | "\r" }
+
+identifier = @{ XID_START ~ XID_CONTINUE* }
+
+sector_header = { "[" ~ identifier ~ "]" }
+
+key = { identifier }
+value_line = @{ (!(NEWLINE | "\\\n" ) ~ ANY)* }
+value = { ( value_line ~ "\\\n")* ~ value_line ~ NEWLINE }
+
+entry = { key ~ "=" ~ value ~ NEWLINE* }
+
+sector = { sector_header ~ NEWLINE ~ entry+ }
+
+unit_file = { SOI ~ sector+ ~ EOI }
