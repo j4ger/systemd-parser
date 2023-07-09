@@ -1,0 +1,3 @@
+[submodule "sysmaster"]
+	path = sysmaster
+	url = https://gitee.com/openeuler/sysmaster.git
