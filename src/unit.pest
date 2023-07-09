@@ -1,16 +1,16 @@
 COMMENT = _{ (("#" | ";") ~ (!NEWLINE ~ ANY)*) ~ NEWLINE }
 WHITESPACE = _{ " " | "\t" | "\r" }
 
-identifier = @{ XID_START ~ XID_CONTINUE* }
+identifier = _{ XID_START ~ XID_CONTINUE* }
 
-sector_header = { "[" ~ identifier ~ "]" }
+sector_header = { identifier }
 
 key = { identifier }
 value_line = @{ (!(NEWLINE | "\\\n" ) ~ ANY)* }
-value = { ( value_line ~ "\\\n")* ~ value_line ~ NEWLINE }
+value = { ( value_line ~ "\\\n")* ~ value_line }
 
-entry = { key ~ "=" ~ value ~ NEWLINE* }
+entry = { key ~ "=" ~ value ~ NEWLINE+ }
 
-sector = { sector_header ~ NEWLINE ~ entry+ }
+sector = { "[" ~ sector_header ~ "]" ~ NEWLINE ~ entry+ }
 
 unit_file = { SOI ~ sector+ ~ EOI }
