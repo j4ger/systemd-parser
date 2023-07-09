@@ -1,7 +1,12 @@
 use pest::Parser;
 use pest_derive::Parser;
 use snafu::prelude::*;
-use std::collections::HashMap;
+use std::{
+    collections::HashMap,
+    fs::File,
+    io::{self, Read},
+    path::Path,
+};
 
 #[derive(Parser, Debug)]
 #[grammar = "unit.pest"]
@@ -9,8 +14,15 @@ struct UnitFileParser;
 
 type RuleError = pest::error::Error<Rule>;
 
+type Result<T, E = Error> = std::result::Result<T, E>;
+
+type Output = Result<HashMap<String, HashMap<String, String>>>;
+
 #[derive(Debug, Snafu)]
 pub enum Error {
+    #[snafu(display("Failed to read file {}: {}.", path, source))]
+    ReadFileError { source: io::Error, path: String },
+
     #[snafu(display("Failed to parse input: {}.", source))]
     ParsingError { source: RuleError },
 
@@ -33,9 +45,7 @@ pub enum Error {
     EntryValueError { actual: Rule },
 }
 
-type Result<T, E = Error> = std::result::Result<T, E>;
-
-pub fn parse<S: AsRef<str>>(input: S) -> Result<HashMap<String, HashMap<String, String>>> {
+pub fn parse<S: AsRef<str>>(input: S) -> Output {
     let mut parse =
         UnitFileParser::parse(Rule::unit_file, input.as_ref()).context(ParsingSnafu {})?;
     // should never fail since rule unit_file restricts SOI and EOI
@@ -63,7 +73,7 @@ pub fn parse<S: AsRef<str>>(input: S) -> Result<HashMap<String, HashMap<String, 
                 actual: first_item.as_rule()
             }
         );
-        let sector_name = first_item.as_str();
+        let sector_name = first_item.as_str().to_string();
 
         let mut entries = HashMap::new();
 
@@ -85,7 +95,7 @@ pub fn parse<S: AsRef<str>>(input: S) -> Result<HashMap<String, HashMap<String, 
                     actual: key.as_rule()
                 }
             );
-            let key = key.as_str();
+            let key = key.as_str().to_string();
 
             // should not fail as the contents of an entry is restricted
             let values = entry_inner.next().unwrap();
@@ -95,7 +105,7 @@ pub fn parse<S: AsRef<str>>(input: S) -> Result<HashMap<String, HashMap<String, 
                     actual: values.as_rule()
                 }
             );
-            let value = values.as_str();
+            let value = values.as_str().to_string();
 
             entries.insert(key, value);
         }
@@ -105,5 +115,17 @@ pub fn parse<S: AsRef<str>>(input: S) -> Result<HashMap<String, HashMap<String, 
 
     ensure!(!result.is_empty(), NoSectorSnafu {});
 
-    todo!();
+    Ok(result)
+}
+
+pub fn parse_file<S: AsRef<Path>>(input_file: S) -> Output {
+    let path = input_file.as_ref();
+    let mut content = String::new();
+    let mut file = File::open(path).context(ReadFileSnafu {
+        path: path.to_string_lossy().to_string(),
+    })?;
+    file.read_to_string(&mut content).context(ReadFileSnafu {
+        path: path.to_string_lossy().to_string(),
+    })?;
+    parse(content)
 }
