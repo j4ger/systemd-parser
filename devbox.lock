@@ -1,0 +1,15 @@
+{
+  "lockfile_version": "1",
+  "packages": {
+    "cargo-expand@latest": {
+      "last_modified": "2023-06-29T16:20:38Z",
+      "resolved": "github:NixOS/nixpkgs/3c614fbc76fc152f3e1bc4b2263da6d90adf80fb#cargo-expand",
+      "version": "1.0.56"
+    },
+    "taplo@latest": {
+      "last_modified": "2023-06-29T16:20:38Z",
+      "resolved": "github:NixOS/nixpkgs/3c614fbc76fc152f3e1bc4b2263da6d90adf80fb#taplo",
+      "version": "0.8.0"
+    }
+  }
+}
