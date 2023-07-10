@@ -109,7 +109,11 @@ pub fn parse<S: AsRef<str>>(input: S) -> Output {
                     actual: values.as_rule()
                 }
             );
-            let value = values.as_str().to_string();
+            let mut value = String::new();
+            for line in values.into_inner() {
+                let partial = line.as_str().trim_end_matches("\\\n");
+                value.push_str(partial);
+            }
 
             entries.insert(key, value);
         }
