@@ -54,8 +54,12 @@ pub fn parse<S: AsRef<str>>(input: S) -> Output {
     let mut result = HashMap::new();
 
     for sector in sectors {
+        if sector.as_rule() == Rule::EOI {
+            break;
+        }
+
         ensure!(
-            sector.as_rule() != Rule::sector,
+            sector.as_rule() == Rule::sector,
             SectorSnafu {
                 actual: sector.as_rule(),
             }
