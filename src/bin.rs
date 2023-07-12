@@ -11,7 +11,8 @@ fn main() {
     let args = CliOptions::parse();
     match parse_file(args.input) {
         Err(err) => {
-            eprintln!("Error occured: {}", err);
+            eprintln!("Error occured.");
+            eprintln!("{}", err);
         }
         Ok(result) => {
             println!("{:#?}", result);
