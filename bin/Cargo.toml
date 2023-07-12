@@ -1,0 +1,8 @@
+[package]
+name = "systemd_parser_cli"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+clap = { version = "4.3.10", features = ["derive"] }
+systemd_parser = { path = "../lib" }
