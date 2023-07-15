@@ -9,7 +9,7 @@ pub trait UnitConfig: Sized {
 
 /// explicitly derived by using `#[derive(UnitSection)]`
 pub trait UnitSection: Sized {
-    fn __parse_section(source: &HashMap<String, HashMap<String, String>>) -> Result<Option<Self>>;
+    fn __parse_section(source: &HashMap<String, &HashMap<String, String>>) -> Result<Option<Self>>;
 }
 
 /// automatically derived for all supported types
