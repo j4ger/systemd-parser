@@ -14,9 +14,8 @@ pub struct SimpleSection {
 #[derive(UnitSection)]
 // sections can be attributed with default to fallback to default when not present
 // trait `Default` is required to be implemented
-#[default]
 // sections can also have alternative key name
-#[key = "custom-key"]
+#[unit(default, key = "alt-key")]
 pub struct AdvancedSection {
     /// a regular public config field
     pub regular: String,
@@ -34,10 +33,10 @@ pub struct AdvancedSection {
     nested: NestedConfig,
 
     /// a config field with custom key name
-    #[key = "alt-key"]
+    #[unit(key = "alt-key")]
     custom_named: String,
 
     /// a config field with default value
-    #[default = "default-value"]
+    #[unit(default = "default-value")]
     default_valued: String,
 }
