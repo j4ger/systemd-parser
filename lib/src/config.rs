@@ -1,6 +1,6 @@
 use std::{collections::HashMap, path::PathBuf};
 
-use crate::error::Result;
+pub type Result<T, E = crate::error::Error> = std::result::Result<T, E>;
 
 /// explicitly derived by using `#[derive(UnitConfig)]`
 pub trait UnitConfig: Sized {

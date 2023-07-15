@@ -5,8 +5,6 @@ use std::io;
 
 type RuleError = pest::error::Error<Rule>;
 
-pub type Result<T, E = Error> = std::result::Result<T, E>;
-
 #[derive(Debug, Snafu)]
 #[snafu(visibility(pub))]
 pub enum Error {
