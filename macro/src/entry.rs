@@ -1,20 +1,14 @@
 use crate::attribute::{impl_default_val, impl_key};
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote, ToTokens};
-use syn::{
-    parse::{Parse, ParseStream},
-    parse_macro_input,
-    spanned::Spanned,
-    token::Brace,
-    Attribute, DeriveInput, Error, Expr, Field, Ident, Meta, Token, TypePath, Visibility,
-};
+use syn::{Error, Field};
 
 pub(crate) fn gen_entry_ensure(field: &Field) -> TokenStream {
     let ty = &field.ty;
     quote! {
         const _: fn() = || {
             fn assert_impl<T: UnitEntry>() {}
-            assert_impl::<ty>();
+            assert_impl::<#ty>();
         };
     }
 }
@@ -34,12 +28,12 @@ pub(crate) fn gen_entry_parse(field: &Field) -> Result<TokenStream, Error> {
     let result = match default {
         Some(default) => {
             quote! {
-                let #ident = ty::parse(source)?.unwrap_or(default);
+                let #ident = #ty::parse(source)?.unwrap_or(#default);
             }
         }
         None => {
             quote! {
-                let #ident = ty::parse(source)?.ok_or(systemd_unit_parser::error::EntryMissingError { key: #key_name })?;
+                let #ident = #ty::parse(source)?.ok_or(systemd_unit_parser::error::EntryMissingError { key: #key_name })?;
             }
         }
     };
