@@ -9,9 +9,9 @@ use syn::{Data, DeriveInput, Meta};
 pub fn gen_section_parser(input: DeriveInput) -> syn::Result<TokenStream> {
     let DeriveInput {
         attrs,
-        vis,
+        vis: _,
         ident,
-        generics,
+        generics: _,
         data,
     } = input;
     let key = impl_key(&attrs)?.unwrap_or((&ident).into_token_stream());
@@ -34,6 +34,12 @@ pub fn gen_section_parser(input: DeriveInput) -> syn::Result<TokenStream> {
 
     let result = match default {
         true => quote! {
+            // ensure #ident implements Default
+            const _: fn() = || {
+                fn assert_impl<T: Default>() {}
+                assert_impl::<#ident>();
+            };
+
             impl systemd_unit_parser::UnitSection for #ident {
                 fn __parse_section(source: &HashMap<String, &HashMap<String, String>>) -> Result<Self>{
                     let source = match source.get(#key) {
