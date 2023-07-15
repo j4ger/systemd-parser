@@ -35,7 +35,10 @@ pub enum Error {
     EntryValueError { actual: Rule },
 
     #[snafu(display("Missing entry with key {}, which is required.", key))]
-    MissingEntryError { key: String },
+    EntryMissingError { key: String },
+
+    #[snafu(display("Missing section with key {}, which is required.", key))]
+    SectionMissingError { key: String },
 
     #[snafu(display("Failed to parse {} as the value of entry with key {}.", value, key))]
     ValueParsingError { key: String, value: String },
