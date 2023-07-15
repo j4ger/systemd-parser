@@ -1,2 +1,3 @@
 [workspace]
 members = ["lib", "macro", "bin"]
+exclude = ["experiment", "syn"]
