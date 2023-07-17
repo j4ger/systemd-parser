@@ -3,7 +3,7 @@ use crate::{
     entry::{gen_entry_ensure, gen_entry_parse},
 };
 use proc_macro2::TokenStream;
-use quote::{format_ident, quote, ToTokens};
+use quote::{quote, ToTokens};
 use syn::{Data, DeriveInput, Error, Field};
 
 pub fn gen_section_derives(input: DeriveInput) -> syn::Result<TokenStream> {
@@ -26,7 +26,10 @@ pub fn gen_section_derives(input: DeriveInput) -> syn::Result<TokenStream> {
             entries.push(entry.ident);
         }
     } else {
-        panic!("A section cannot be an enum or an union.")
+        return Err(Error::new_spanned(
+            input,
+            "A UnitSection cannot be an enum or an union.",
+        ));
     }
 
     let result = quote! {
