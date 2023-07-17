@@ -3,6 +3,11 @@ use systemd_parser_macro::{UnitConfig, UnitSection};
 #[derive(UnitConfig)]
 pub struct Unit {
     pub section_1: SimpleSection,
+
+    // sections can be attributed with default to fallback to default when not present
+    // trait `Default` is required to be implemented
+    // sections can also have alternative key name
+    #[unit(default, key = "alt-key")]
     pub section_2: AdvancedSection,
 }
 
@@ -12,10 +17,6 @@ pub struct SimpleSection {
 }
 
 #[derive(UnitSection)]
-// sections can be attributed with default to fallback to default when not present
-// trait `Default` is required to be implemented
-// sections can also have alternative key name
-#[unit(default, key = "alt-key")]
 pub struct AdvancedSection {
     /// a regular public config field
     pub regular: String,
