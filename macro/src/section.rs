@@ -1,12 +1,12 @@
 use crate::{
-    attribute::{impl_default, impl_default_val, impl_key},
+    attribute::{impl_default, impl_key},
     entry::{gen_entry_ensure, gen_entry_parse},
 };
 use proc_macro2::TokenStream;
-use quote::{quote, ToTokens};
-use syn::{Data, DeriveInput, Meta};
+use quote::{format_ident, quote, ToTokens};
+use syn::{Data, DeriveInput, Error, Field};
 
-pub fn gen_section_parser(input: DeriveInput) -> syn::Result<TokenStream> {
+pub fn gen_section_derives(input: DeriveInput) -> syn::Result<TokenStream> {
     let DeriveInput {
         attrs,
         vis: _,
@@ -14,9 +14,6 @@ pub fn gen_section_parser(input: DeriveInput) -> syn::Result<TokenStream> {
         generics: _,
         data,
     } = input;
-    let key = impl_key(&attrs)?.unwrap_or((&ident).into_token_stream());
-    let key_name = format!("{}", key);
-    let default = impl_default(&attrs)?;
 
     let mut entry_ensures = Vec::new();
     let mut entry_parsers = Vec::new();
@@ -32,42 +29,59 @@ pub fn gen_section_parser(input: DeriveInput) -> syn::Result<TokenStream> {
         panic!("A section cannot be an enum or an union.")
     }
 
-    let result = match default {
-        true => quote! {
-            // ensure #ident implements Default
-            const _: fn() = || {
-                fn assert_impl<T: Default>() {}
-                assert_impl::<#ident>();
-            };
-
-            impl systemd_unit_parser::UnitSection for #ident {
-                fn __parse_section(source: &HashMap<String, &HashMap<String, String>>) -> Result<Self>{
-                    let source = match source.get(#key) {
-                        Some(inner) => inner,
-                        None => { return Ok(#ident::Default()); },
-                    };
-                    #( #entry_parsers )*
-                    Ok(Self {
-                        #( #entries ),*
-                    })
-                }
+    let result = quote! {
+        impl systemd_unit_parser::UnitSection for #ident {
+            fn __parse_section<S: AsRef<str>>(source: &HashMap<String, &HashMap<String, String>>, key: S) -> Option<Self> {
+                let source = match source.get(key) {
+                    Some(inner) => inner,
+                    None => { return Err(systemd_unit_parser::error::SectionMissingError {key}); },
+                };
+                #( #entry_parsers )*
+                Ok(Self {
+                    #( #entries ),*
+                })
             }
-        },
-        false => quote! {
-            impl systemd_unit_parser::UnitSection for #ident {
-                fn __parse_section(source: &HashMap<String, &HashMap<String, String>>) -> Result<Self>{
-                    let source = match source.get(#key) {
-                        Some(inner) => inner,
-                        None => { return Err(systemd_unit_parser::error::SectionMissingError {key: #key_name}); },
-                    };
-                    #( #entry_parsers )*
-                    Ok(Self {
-                        #( #entries ),*
-                    })
-                }
-            }
-        },
+        }
     };
 
     Ok(result)
+}
+
+pub(crate) fn gen_section_parse(field: &Field) -> Result<TokenStream, Error> {
+    let name = &field
+        .ident
+        .as_ref()
+        .expect("Tuple structs are not supported.");
+    let ty = &field.ty;
+    let key = impl_key(&field.attrs)?.unwrap_or((&field.ident).into_token_stream());
+    let default = impl_default(&field.attrs)?;
+
+    let key_name = format!("{}", key);
+
+    let result = match default {
+        true => {
+            let ensure = gen_section_ensure(field);
+            quote! {
+                #ensure
+                let #name = #ty::__parse_section(source, #key_name)?.unwrap_or(#ty::default());
+            }
+        }
+        false => {
+            quote! {
+                let #name = #ty::__parse_section(source, #key_name)?.ok_or(systemd_unit_parser::error::EntryMissingError { key: #key_name })?;
+            }
+        }
+    };
+
+    Ok(result)
+}
+
+fn gen_section_ensure(field: &Field) -> TokenStream {
+    let ty = &field.ty;
+    quote! {
+        const _: fn() = || {
+            fn assert_impl<T: UnitSection>() {}
+            assert_impl::<#ty>();
+        };
+    }
 }
