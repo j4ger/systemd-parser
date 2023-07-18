@@ -27,12 +27,12 @@ pub(crate) fn gen_entry_parse(field: &Field) -> Result<TokenStream, Error> {
     let result = match default {
         Some(default) => {
             quote! {
-                let #name = #ty::parse(source, #key_name).unwrap_or(#default);
+                let #name = #ty::parse(__source, #key_name).unwrap_or(#default);
             }
         }
         None => {
             quote! {
-                let #name = #ty::parse(source, #key_name).ok_or(systemd_unit_parser::error::EntryMissingError { key: #key_name })?;
+                let #name = #ty::parse(__source, #key_name).ok_or(systemd_unit_parser::error::EntryMissingError { key: #key_name })?;
             }
         }
     };
