@@ -4,13 +4,13 @@ pub type Result<T, E = crate::error::Error> = std::result::Result<T, E>;
 
 /// explicitly derived by using `#[derive(UnitConfig)]`
 pub trait UnitConfig: Sized {
-    fn parse<P: AsRef<PathBuf>>(path: P) -> Result<Self>;
+    fn parse(source: &HashMap<String, HashMap<String, String>>) -> Result<Self>;
 }
 
 /// explicitly derived by using `#[derive(UnitSection)]`
 pub trait UnitSection: Sized {
     fn __parse_section<S: AsRef<str>>(
-        source: &HashMap<String, &HashMap<String, String>>,
+        source: &HashMap<String, HashMap<String, String>>,
         key: S,
     ) -> Option<Self>;
 }

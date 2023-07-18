@@ -7,23 +7,19 @@ use quote::{quote, ToTokens};
 use syn::{Data, DeriveInput, Error, Field};
 
 pub fn gen_section_derives(input: DeriveInput) -> syn::Result<TokenStream> {
-    let DeriveInput {
-        attrs,
-        vis: _,
-        ident,
-        generics: _,
-        data,
-    } = input;
-
     let mut entry_ensures = Vec::new();
     let mut entry_parsers = Vec::new();
     let mut entries = Vec::new();
 
-    if let Data::Struct(data_struct) = data {
-        for entry in data_struct.fields {
-            entry_ensures.push(gen_entry_ensure(&entry));
-            entry_parsers.push(gen_entry_parse(&entry)?);
-            entries.push(entry.ident);
+    if let Data::Struct(data_struct) = &input.data {
+        for entry in &data_struct.fields {
+            entry_ensures.push(gen_entry_ensure(entry));
+            entry_parsers.push(gen_entry_parse(entry)?);
+            let ident = entry.ident.as_ref().ok_or(Error::new_spanned(
+                &entry,
+                "An entry must have an explicit name.",
+            ))?;
+            entries.push(ident);
         }
     } else {
         return Err(Error::new_spanned(
@@ -32,9 +28,11 @@ pub fn gen_section_derives(input: DeriveInput) -> syn::Result<TokenStream> {
         ));
     }
 
+    let ident = &input.ident;
+
     let result = quote! {
         impl systemd_unit_parser::UnitSection for #ident {
-            fn __parse_section<S: AsRef<str>>(source: &HashMap<String, &HashMap<String, String>>, key: S) -> Option<Self> {
+            fn __parse_section<S: AsRef<str>>(source: &std::collections::HashMap<String, std::collections::HashMap<String, String>>, key: S) -> Option<Self> {
                 let source = match source.get(key) {
                     Some(inner) => inner,
                     None => { return Err(systemd_unit_parser::error::SectionMissingError {key}); },
