@@ -1,4 +1,4 @@
-use crate::error::*;
+use crate::{config::Result, error::*};
 use pest::Parser;
 use pest_derive::Parser;
 use snafu::{ensure, ResultExt};
