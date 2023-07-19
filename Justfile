@@ -1,6 +1,6 @@
 expand:
-	cd macro && cargo expand --example example
+	cd lib && cargo expand --example example
 
 dump:
-	cd syn/examples/dump-syntax && cargo run -- ../../../macro/examples/example.rs | bat
+	cd syn/examples/dump-syntax && cargo run -- ../../../lib/examples/example.rs | bat
 	

@@ -1,4 +1,4 @@
-use systemd_parser_macro::{UnitConfig, UnitSection};
+use systemd_parser::{UnitConfig, UnitSection};
 
 #[derive(UnitConfig)]
 pub struct Unit {
@@ -27,14 +27,13 @@ pub struct AdvancedSection {
     /// an optional config field
     optional: String,
 
-    /// a vector config field
-    vector: Vec<String>,
+    // /// a vector config field
+    // vector: Vec<String>,
 
-    /// a config field with values within an enum
-    enum_field: MyEnum,
-
+    // /// a config field with values within an enum
+    // enum_field: MyEnum,
     /// a config field with custom key name
-    #[section(key = "alt-key")]
+    #[entry(key = "alt-key")]
     custom_named: String,
 
     /// a config field with default value
@@ -42,8 +41,8 @@ pub struct AdvancedSection {
     default_valued: String,
 }
 
-#[derive(UnitEntry)]
-enum MyEnum {
-    Val1,
-    Val2,
-}
+// #[derive(UnitEntry)]
+// enum MyEnum {
+//     Val1,
+//     Val2,
+// }

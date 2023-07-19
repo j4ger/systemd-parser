@@ -375,6 +375,7 @@ dependencies = [
  "pest",
  "pest_derive",
  "snafu",
+ "systemd_parser_macro",
 ]
 
 [[package]]

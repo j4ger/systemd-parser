@@ -15,25 +15,25 @@ pub(crate) fn gen_entry_ensure(field: &Field) -> TokenStream {
 }
 
 pub(crate) fn gen_entry_parse(field: &Field) -> Result<TokenStream, Error> {
-    let name = &field
+    let name = field
         .ident
         .as_ref()
         .expect("Tuple structs are not supported.");
     let ty = &field.ty;
     let attributes = EntryAttributes::parse_vec(&field.attrs)?;
-    let key = attributes.key.unwrap_or((&field.ident).into_token_stream());
-
-    let key_name = format!("{}", key);
+    let key = attributes
+        .key
+        .unwrap_or((format!("{}", name)).into_token_stream());
 
     let result = match attributes.default {
         Some(default) => {
             quote! {
-                let #name = #ty::parse(__source, #key_name).unwrap_or(#default);
+                let #name = #ty::parse(__source, #key).unwrap_or(#default);
             }
         }
         None => {
             quote! {
-                let #name = #ty::parse(__source, #key_name).ok_or(systemd_unit_parser::error::EntryMissingError { key: #key_name })?;
+                let #name = #ty::parse(__source, #key).ok_or(systemd_parser::Error::EntryMissingError { key: #key })?;
             }
         }
     };
