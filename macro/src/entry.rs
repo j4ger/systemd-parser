@@ -1,7 +1,8 @@
-use crate::attribute::{impl_default_val, impl_key};
 use proc_macro2::TokenStream;
-use quote::{format_ident, quote, ToTokens};
-use syn::{DeriveInput, Error, Field};
+use quote::{quote, ToTokens};
+use syn::{Error, Field};
+
+use crate::attribute::EntryAttributes;
 
 pub(crate) fn gen_entry_ensure(field: &Field) -> TokenStream {
     let ty = &field.ty;
@@ -19,12 +20,12 @@ pub(crate) fn gen_entry_parse(field: &Field) -> Result<TokenStream, Error> {
         .as_ref()
         .expect("Tuple structs are not supported.");
     let ty = &field.ty;
-    let key = impl_key(&field.attrs)?.unwrap_or((&field.ident).into_token_stream());
-    let default = impl_default_val(&field.attrs)?;
+    let attributes = EntryAttributes::parse_vec(&field.attrs)?;
+    let key = attributes.key.unwrap_or((&field.ident).into_token_stream());
 
     let key_name = format!("{}", key);
 
-    let result = match default {
+    let result = match attributes.default {
         Some(default) => {
             quote! {
                 let #name = #ty::parse(__source, #key_name).unwrap_or(#default);
@@ -40,6 +41,6 @@ pub(crate) fn gen_entry_parse(field: &Field) -> Result<TokenStream, Error> {
     Ok(result)
 }
 
-pub(crate) fn gen_entry_derives(input: DeriveInput) -> syn::Result<TokenStream> {
-    todo!()
-}
+// pub(crate) fn gen_entry_derives(input: DeriveInput) -> syn::Result<TokenStream> {
+//     todo!()
+// }

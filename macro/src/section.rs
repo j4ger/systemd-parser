@@ -1,5 +1,5 @@
 use crate::{
-    attribute::{impl_default, impl_key},
+    attribute::SectionAttributes,
     entry::{gen_entry_ensure, gen_entry_parse},
 };
 use proc_macro2::TokenStream;
@@ -54,12 +54,12 @@ pub(crate) fn gen_section_parse(field: &Field) -> Result<TokenStream, Error> {
         .as_ref()
         .expect("Tuple structs are not supported.");
     let ty = &field.ty;
-    let key = impl_key(&field.attrs)?.unwrap_or((&field.ident).into_token_stream());
-    let default = impl_default(&field.attrs)?;
+    let attributes = SectionAttributes::parse_vec(&field.attrs)?;
+    let key = attributes.key.unwrap_or((&field.ident).into_token_stream());
 
     let key_name = format!("{}", key);
 
-    let result = match default {
+    let result = match attributes.default {
         true => {
             let ensure = gen_section_ensure(field);
             quote! {
