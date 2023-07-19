@@ -7,7 +7,7 @@ pub struct Unit {
     // sections can be attributed with default to fallback to default when not present
     // trait `Default` is required to be implemented
     // sections can also have alternative key name
-    #[unit(default, key = "alt-key")]
+    #[section(default, key = "alt-key")]
     pub section_2: AdvancedSection,
 }
 
@@ -30,14 +30,20 @@ pub struct AdvancedSection {
     /// a vector config field
     vector: Vec<String>,
 
-    /// a nested config field
-    nested: NestedConfig,
+    /// a config field with values within an enum
+    enum_field: MyEnum,
 
     /// a config field with custom key name
-    #[unit(key = "alt-key")]
+    #[section(key = "alt-key")]
     custom_named: String,
 
     /// a config field with default value
-    #[unit(default = "default-value")]
+    #[entry(default = "default-value")]
     default_valued: String,
+}
+
+#[derive(UnitEntry)]
+enum MyEnum {
+    Val1,
+    Val2,
 }
