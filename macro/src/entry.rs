@@ -34,7 +34,7 @@ pub(crate) fn gen_entry_parse(field: &Field) -> Result<TokenStream, Error> {
         }
         None => {
             quote! {
-                let #name = #ty::__parse_entry(__source, #key)?.ok_or(systemd_parser::Error::EntryMissingError { key: #key.to_string() })?;
+                let #name = #ty::__parse_entry(__source, #key)?.ok_or(systemd_parser::internal::Error::EntryMissingError { key: #key.to_string() })?;
             }
         }
     };

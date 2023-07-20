@@ -27,8 +27,8 @@ pub fn gen_unit_derives(input: DeriveInput) -> syn::Result<TokenStream> {
     let ident = &input.ident;
 
     let result = quote! {
-         impl systemd_parser::UnitConfig for #ident {
-            fn parse(__source: &std::collections::HashMap<String, std::collections::HashMap<String, String>>) -> systemd_parser::Result<Self> {
+         impl systemd_parser::internal::UnitConfig for #ident {
+            fn parse(__source: &std::collections::HashMap<String, std::collections::HashMap<String, String>>) -> systemd_parser::internal::Result<Self> {
                 #( #section_parsers )*
                 Ok(Self {
                     #( #sections ),*

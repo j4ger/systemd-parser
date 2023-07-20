@@ -1,4 +1,4 @@
-use systemd_parser::{UnitConfig, UnitEntry, UnitSection};
+use systemd_parser::prelude::*;
 
 #[derive(UnitConfig)]
 pub struct Unit {

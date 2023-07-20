@@ -1,4 +1,4 @@
-use crate::Error;
+use crate::internal::Error;
 use std::{collections::HashMap, str::FromStr};
 
 pub type Result<T, E = crate::error::Error> = std::result::Result<T, E>;

@@ -1,5 +1,5 @@
 use clap::Parser;
-use systemd_parser::parse_file;
+use systemd_parser::internal::parse_file;
 
 #[derive(Parser, Debug)]
 struct CliOptions {
