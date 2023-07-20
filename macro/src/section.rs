@@ -32,15 +32,15 @@ pub fn gen_section_derives(input: DeriveInput) -> syn::Result<TokenStream> {
 
     let result = quote! {
         impl systemd_parser::UnitSection for #ident {
-            fn __parse_section<S: AsRef<str>>(__source: &std::collections::HashMap<String, std::collections::HashMap<String, String>>, __key: S) -> Option<Self> {
+            fn __parse_section<S: AsRef<str>>(__source: &std::collections::HashMap<String, std::collections::HashMap<String, String>>, __key: S) -> systemd_parser::Result<Option<Self>> {
                 let __source = match __source.get(__key) {
                     Some(__inner) => __inner,
-                    None => { return Err(systemd_parser::Error::SectionMissingError { key: __key }); },
+                    None => { return Ok(None); },
                 };
                 #( #entry_parsers )*
-                Ok(Self {
+                Ok(Some(Self {
                     #( #entries ),*
-                })
+                }))
             }
         }
     };
@@ -69,7 +69,7 @@ pub(crate) fn gen_section_parse(field: &Field) -> Result<TokenStream, Error> {
         }
         false => {
             quote! {
-                let #name = #ty::__parse_section(__source, #key)?.ok_or(systemd_parser::Error::EntryMissingError { key: #key })?;
+                let #name = #ty::__parse_section(__source, #key)?.ok_or(systemd_parser::Error::EntryMissingError { key: #key.to_string() })?;
             }
         }
     };

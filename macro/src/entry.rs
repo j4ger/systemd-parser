@@ -2,7 +2,7 @@ use proc_macro2::TokenStream;
 use quote::{quote, ToTokens};
 use syn::{Error, Field};
 
-use crate::attribute::EntryAttributes;
+use crate::{attribute::EntryAttributes, transform_default::transform_default};
 
 pub(crate) fn gen_entry_ensure(field: &Field) -> TokenStream {
     let ty = &field.ty;
@@ -27,13 +27,14 @@ pub(crate) fn gen_entry_parse(field: &Field) -> Result<TokenStream, Error> {
 
     let result = match attributes.default {
         Some(default) => {
+            let default = transform_default(ty, &default);
             quote! {
-                let #name = #ty::parse(__source, #key).unwrap_or(#default);
+                let #name = #ty::__parse_entry(__source, #key)?.unwrap_or(#default);
             }
         }
         None => {
             quote! {
-                let #name = #ty::parse(__source, #key).ok_or(systemd_parser::Error::EntryMissingError { key: #key })?;
+                let #name = #ty::__parse_entry(__source, #key)?.ok_or(systemd_parser::Error::EntryMissingError { key: #key.to_string() })?;
             }
         }
     };

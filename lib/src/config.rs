@@ -12,10 +12,13 @@ pub trait UnitSection: Sized {
     fn __parse_section<S: AsRef<str>>(
         __source: &HashMap<String, HashMap<String, String>>,
         __key: S,
-    ) -> Option<Self>;
+    ) -> Result<Option<Self>>;
 }
 
 /// automatically derived for all supported types
 pub trait UnitEntry: Sized {
-    fn __parse_entry<S: AsRef<str>>(__source: &HashMap<String, String>, __key: S) -> Option<Self>;
+    fn __parse_entry<S: AsRef<str>>(
+        __source: &HashMap<String, String>,
+        __key: S,
+    ) -> Result<Option<Self>>;
 }

@@ -2,18 +2,26 @@ use systemd_parser::{UnitConfig, UnitSection};
 
 #[derive(UnitConfig)]
 pub struct Unit {
-    pub section_1: SimpleSection,
-
     // sections can be attributed with default to fallback to default when not present
     // trait `Default` is required to be implemented
     // sections can also have alternative key name
     #[section(default, key = "alt-key")]
+    pub section_1: SimpleSection,
+
     pub section_2: AdvancedSection,
 }
 
 #[derive(UnitSection)]
 pub struct SimpleSection {
     pub field: String,
+}
+
+impl Default for SimpleSection {
+    fn default() -> Self {
+        Self {
+            field: "value".to_string(),
+        }
+    }
 }
 
 #[derive(UnitSection)]
@@ -46,3 +54,5 @@ pub struct AdvancedSection {
 //     Val1,
 //     Val2,
 // }
+
+fn main() {}

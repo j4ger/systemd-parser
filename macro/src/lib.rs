@@ -5,6 +5,7 @@ use unit::gen_unit_derives;
 mod attribute;
 mod entry;
 mod section;
+mod transform_default;
 mod unit;
 
 #[proc_macro_derive(UnitConfig, attributes(section))]

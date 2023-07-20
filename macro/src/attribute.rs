@@ -41,7 +41,7 @@ impl SectionAttributes {
 }
 
 pub(crate) struct EntryAttributes {
-    pub(crate) default: Option<TokenStream>,
+    pub(crate) default: Option<Expr>,
     pub(crate) key: Option<TokenStream>,
 }
 
@@ -63,7 +63,7 @@ impl EntryAttributes {
                     if nested.path.is_ident("default") {
                         nested.input.parse::<Token![=]>()?;
                         let value: Expr = nested.input.parse()?;
-                        result.default = Some(value.into_token_stream());
+                        result.default = Some(value);
                         Ok(())
                     } else if nested.path.is_ident("key") {
                         nested.input.parse::<Token![=]>()?;
