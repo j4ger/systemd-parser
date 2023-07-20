@@ -32,9 +32,6 @@ pub struct AdvancedSection {
     /// a private config field
     private: String,
 
-    /// an optional config field
-    optional: String,
-
     // /// a vector config field
     // vector: Vec<String>,
 

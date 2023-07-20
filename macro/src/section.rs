@@ -33,7 +33,7 @@ pub fn gen_section_derives(input: DeriveInput) -> syn::Result<TokenStream> {
     let result = quote! {
         impl systemd_parser::internal::UnitSection for #ident {
             fn __parse_section<S: AsRef<str>>(__source: &std::collections::HashMap<String, std::collections::HashMap<String, String>>, __key: S) -> systemd_parser::internal::Result<Option<Self>> {
-                let __source = match __source.get(__key) {
+                let __source = match __source.get(__key.as_ref()) {
                     Some(__inner) => __inner,
                     None => { return Ok(None); },
                 };

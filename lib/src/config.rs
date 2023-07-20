@@ -42,3 +42,27 @@ impl<T: FromStr> UnitEntry for T {
         }
     }
 }
+
+pub struct SimpleSection {
+    pub field: String,
+}
+
+impl crate::internal::UnitSection for SimpleSection {
+    fn __parse_section<S: AsRef<str>>(
+        __source: &std::collections::HashMap<String, std::collections::HashMap<String, String>>,
+        __key: S,
+    ) -> crate::internal::Result<Option<Self>> {
+        let __source = match __source.get(__key.as_ref()) {
+            Some(__inner) => __inner,
+            None => {
+                return Ok(None);
+            }
+        };
+        let field = String::__parse_entry(__source, "field")?.ok_or(
+            crate::internal::Error::EntryMissingError {
+                key: "field".to_string(),
+            },
+        )?;
+        Ok(Some(Self { field }))
+    }
+}
