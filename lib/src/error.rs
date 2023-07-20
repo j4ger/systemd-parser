@@ -14,14 +14,14 @@ pub enum Error {
     #[snafu(display("Failed to parse input: {}.", source))]
     ParsingError { source: RuleError },
 
-    #[snafu(display("Unit file should provide at least one sector."))]
-    NoSectorError,
+    #[snafu(display("Unit file should provide at least one section."))]
+    NoSectionError,
 
-    #[snafu(display("Expecting sector but found {:?}.", actual))]
-    SectorError { actual: Rule },
+    #[snafu(display("Expecting section but found {:?}.", actual))]
+    SectionError { actual: Rule },
 
-    #[snafu(display("Expecting sector name but found {:?}.", actual))]
-    SectorNameError { actual: Rule },
+    #[snafu(display("Expecting section name but found {:?}.", actual))]
+    SectionNameError { actual: Rule },
 
     #[snafu(display("Expecting entry but found {:?}.", actual))]
     EntryError { actual: Rule },

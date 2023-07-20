@@ -14,35 +14,35 @@ pub fn parse<S: AsRef<str>>(input: S) -> Output {
     let mut parse =
         UnitFileParser::parse(Rule::unit_file, input.as_ref()).context(ParsingSnafu {})?;
     // should never fail since rule unit_file restricts SOI and EOI
-    let sectors = parse.next().unwrap().into_inner();
+    let sections = parse.next().unwrap().into_inner();
 
     let mut result = HashMap::new();
 
-    for sector in sectors {
-        if sector.as_rule() == Rule::EOI {
+    for section in sections {
+        if section.as_rule() == Rule::EOI {
             break;
         }
 
         ensure!(
-            sector.as_rule() == Rule::sector,
-            SectorSnafu {
-                actual: sector.as_rule(),
+            section.as_rule() == Rule::section,
+            SectionSnafu {
+                actual: section.as_rule(),
             }
         );
 
-        let mut inner = sector.into_inner();
+        let mut inner = section.into_inner();
 
         // should not fail since sectors minimum is restricted
         let first_item = inner.next().unwrap();
         // probably also not needed as it would violate grammar test, but if we make the grammar
         // less restrictive, then error messages would be more detailed
         ensure!(
-            first_item.as_rule() == Rule::sector_header,
-            SectorNameSnafu {
+            first_item.as_rule() == Rule::section_header,
+            SectionNameSnafu {
                 actual: first_item.as_rule()
             }
         );
-        let sector_name = first_item.as_str().to_string();
+        let section_name = first_item.as_str().to_string();
 
         let mut entries = HashMap::new();
 
@@ -83,10 +83,10 @@ pub fn parse<S: AsRef<str>>(input: S) -> Output {
             entries.insert(key, value);
         }
 
-        result.insert(sector_name, entries);
+        result.insert(section_name, entries);
     }
 
-    ensure!(!result.is_empty(), NoSectorSnafu {});
+    ensure!(!result.is_empty(), NoSectionSnafu {});
 
     Ok(result)
 }

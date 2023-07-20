@@ -1,36 +1,38 @@
+use std::{fs::File, io::Read};
+
 use systemd_parser::prelude::*;
 
-#[derive(UnitConfig)]
+#[derive(UnitConfig, Debug)]
 pub struct Unit {
     // sections can be attributed with default to fallback to default when not present
     // trait `Default` is required to be implemented
     // sections can also have alternative key name
-    #[section(default, key = "alt-key")]
-    pub section_1: SimpleSection,
+    #[section(default, key = "AlternativeKey")]
+    pub Section1: SimpleSection,
 
-    pub section_2: AdvancedSection,
+    pub Section2: AdvancedSection,
 }
 
-#[derive(UnitSection)]
+#[derive(UnitSection, Debug)]
 pub struct SimpleSection {
-    pub field: String,
+    pub Field: String,
 }
 
 impl Default for SimpleSection {
     fn default() -> Self {
         Self {
-            field: "value".to_string(),
+            Field: "value".to_string(),
         }
     }
 }
 
-#[derive(UnitSection)]
+#[derive(UnitSection, Debug)]
 pub struct AdvancedSection {
     /// a regular public config field
-    pub regular: String,
+    pub Regular: String,
 
     /// a private config field
-    private: String,
+    Private: String,
 
     // /// a vector config field
     // vector: Vec<String>,
@@ -38,12 +40,12 @@ pub struct AdvancedSection {
     // /// a config field with values within an enum
     // enum_field: MyEnum,
     /// a config field with custom key name
-    #[entry(key = "alt-key")]
-    custom_named: String,
+    #[entry(key = "AlternativeKey")]
+    CustomNamed: String,
 
     /// a config field with default value
     #[entry(default = "default-value")]
-    default_valued: String,
+    DefaultValued: String,
 }
 
 // #[derive(UnitEntry)]
@@ -52,4 +54,11 @@ pub struct AdvancedSection {
 //     Val2,
 // }
 
-fn main() {}
+fn main() {
+    let mut file = File::open("./examples/example.unit").unwrap();
+    let mut content = String::new();
+    file.read_to_string(&mut content).unwrap();
+    let hashmap = systemd_parser::internal::parse(content).unwrap();
+    let result = Unit::parse(&hashmap).unwrap();
+    println!("{:?}", result);
+}
