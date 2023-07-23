@@ -64,12 +64,12 @@ pub(crate) fn gen_section_parse(field: &Field) -> Result<TokenStream, Error> {
             let ensure = gen_section_ensure(field);
             quote! {
                 #ensure
-                let #name = #ty::__parse_section(__source, #key)?.unwrap_or(#ty::default());
+                let #name: #ty = systemd_parser::internal::UnitSection::__parse_section(__source, #key)?.unwrap_or(#ty::default());
             }
         }
         false => {
             quote! {
-                let #name = #ty::__parse_section(__source, #key)?.ok_or(systemd_parser::internal::Error::EntryMissingError { key: #key.to_string() })?;
+                let #name: #ty = systemd_parser::internal::UnitSection::__parse_section(__source, #key)?.ok_or(systemd_parser::internal::Error::EntryMissingError { key: #key.to_string() })?;
             }
         }
     };

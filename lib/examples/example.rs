@@ -34,8 +34,8 @@ pub struct AdvancedSection {
     /// a private config field
     Private: String,
 
-    // /// a vector config field
-    // vector: Vec<String>,
+    /// a vector config field
+    Vector: Vec<String>,
 
     // /// a config field with values within an enum
     // enum_field: MyEnum,

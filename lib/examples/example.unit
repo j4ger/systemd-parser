@@ -6,3 +6,4 @@ Regular=reg
 Private=pri
 AlternativeKey=cus
 DefaultValued=def
+Vector=string1 string2

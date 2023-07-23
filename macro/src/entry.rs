@@ -29,12 +29,12 @@ pub(crate) fn gen_entry_parse(field: &Field) -> Result<TokenStream, Error> {
         Some(default) => {
             let default = transform_default(ty, &default);
             quote! {
-                let #name = #ty::__parse_entry(__source, #key)?.unwrap_or(#default);
+                let #name: #ty = systemd_parser::internal::UnitEntry::__parse_entry(__source, #key)?.unwrap_or(#default);
             }
         }
         None => {
             quote! {
-                let #name = #ty::__parse_entry(__source, #key)?.ok_or(systemd_parser::internal::Error::EntryMissingError { key: #key.to_string() })?;
+                let #name: #ty = systemd_parser::internal::UnitEntry::__parse_entry(__source, #key)?.ok_or(systemd_parser::internal::Error::EntryMissingError { key: #key.to_string() })?;
             }
         }
     };
