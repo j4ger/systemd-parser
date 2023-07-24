@@ -44,31 +44,34 @@ pub trait UnitSection: Sized {
 
 /// automatically derived for all supported types
 pub trait UnitEntry: Sized {
+    type Error;
+    fn parse_from_str<S: AsRef<str>>(input: S) -> std::result::Result<Self, Self::Error>;
     fn __parse_entry<S: AsRef<str>>(
         __source: &HashMap<String, String>,
         __key: S,
-    ) -> Result<Option<Self>>;
+    ) -> Result<Option<Self>> {
+        let key = __key.as_ref();
+        match __source.get(key) {
+            None => Ok(None),
+            Some(value) => {
+                let value = Self::parse_from_str(value).map_err(|_| Error::ValueParsingError {
+                    key: key.to_string(),
+                    value: value.to_string(),
+                })?;
+                Ok(Some(value))
+            }
+        }
+    }
 }
 
 macro_rules! impl_for_types {
     ($typ:ty) => {
         impl UnitEntry for $typ {
-            fn __parse_entry<S: AsRef<str>>(
-                __source: &HashMap<String, String>,
-                __key: S,
-            ) -> Result<Option<Self>> {
-                let key = __key.as_ref();
-                match __source.get(key) {
-                    None => Ok(None),
-                    Some(value) => {
-                        let value =
-                            <$typ>::from_str(value).map_err(|_| Error::ValueParsingError {
-                                key: key.to_string(),
-                                value: value.to_string(),
-                            })?;
-                        Ok(Some(value))
-                    }
-                }
+            type Error = <$typ as FromStr>::Err;
+            fn parse_from_str<S: AsRef<str>>(
+                input: S,
+            ) -> std::result::Result<Self, Self::Error> {
+                Self::from_str(input.as_ref())
             }
         }
     };
@@ -81,25 +84,17 @@ macro_rules! impl_for_types {
 macro_rules! impl_for_vec_types {
     ($typ:ty) => {
         impl UnitEntry for Vec<$typ> {
-            fn __parse_entry<S: AsRef<str>>(
-                __source: &HashMap<String, String>,
-                __key: S,
-            ) -> Result<Option<Self>> {
-                let key = __key.as_ref();
-                match __source.get(key) {
-                    None => Ok(None),
-                    Some(value) => {
-                        let mut result = Vec::new();
-                        for value in value.split_ascii_whitespace() {
-                            let member = <$typ>::from_str(value).map_err(|_| Error::ValueParsingError {
-                                key: key.to_string(),
-                                value: value.to_string(),
-                            })?;
-                            result.push(member);
-                        }
-                        Ok(Some(result))
-                    }
+            type Error = <$typ as FromStr>::Err;
+            fn parse_from_str<S: AsRef<str>>(
+                input: S,
+            ) -> std::result::Result<Self, Self::Error> {
+                let input = input.as_ref().split_ascii_whitespace();
+                let mut result = Vec::new();
+                for value in input {
+                    let member = <$typ>::from_str(value)?;
+                    result.push(member);
                 }
+                Ok(result)
             }
         }
     };
