@@ -55,10 +55,6 @@ pub struct AdvancedSection {
 // }
 
 fn main() {
-    let mut file = File::open("./examples/example.unit").unwrap();
-    let mut content = String::new();
-    file.read_to_string(&mut content).unwrap();
-    let hashmap = systemd_parser::internal::parse(content).unwrap();
-    let result = Unit::parse(&hashmap).unwrap();
-    println!("{:?}", result);
+    let result = Unit::load("examples/example.unit").unwrap();
+    println!("{:#?}", result);
 }

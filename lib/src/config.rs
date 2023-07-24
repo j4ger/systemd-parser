@@ -1,21 +1,37 @@
-use crate::internal::Error;
+use snafu::ResultExt;
+
+use crate::{error::ReadFileSnafu, internal::Error};
 use std::{
     collections::HashMap,
     ffi::OsString,
+    fs::File,
+    io::Read,
     net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV4, SocketAddrV6},
     num::{
         NonZeroI128, NonZeroI16, NonZeroI32, NonZeroI64, NonZeroI8, NonZeroIsize, NonZeroU128,
         NonZeroU16, NonZeroU32, NonZeroU64, NonZeroU8, NonZeroUsize,
     },
-    path::PathBuf,
+    path::{Path, PathBuf},
     str::FromStr,
 };
 
-pub type Result<T, E = crate::error::Error> = std::result::Result<T, E>;
+pub type Result<T, E = Error> = std::result::Result<T, E>;
 
 /// explicitly derived by using `#[derive(UnitConfig)]`
 pub trait UnitConfig: Sized {
     fn parse(__source: &HashMap<String, HashMap<String, String>>) -> Result<Self>;
+    fn load<S: AsRef<str>>(__path: S) -> Result<Self> {
+        let path = Path::new(__path.as_ref());
+        let mut file = File::open(path).context(ReadFileSnafu {
+            path: path.to_string_lossy().to_string(),
+        })?;
+        let mut content = String::new();
+        file.read_to_string(&mut content).context(ReadFileSnafu {
+            path: path.to_string_lossy().to_string(),
+        })?;
+        let map = crate::parser::parse(content)?;
+        Self::parse(&map)
+    }
 }
 
 /// explicitly derived by using `#[derive(UnitSection)]`
