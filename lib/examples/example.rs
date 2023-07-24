@@ -1,4 +1,4 @@
-use std::{fs::File, io::Read};
+#![allow(non_snake_case)]
 
 use systemd_parser::prelude::*;
 
