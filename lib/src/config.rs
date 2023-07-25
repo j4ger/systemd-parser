@@ -64,6 +64,8 @@ pub trait UnitEntry: Sized {
     }
 }
 
+pub trait EntryInner {}
+
 macro_rules! impl_for_types {
     ($typ:ty) => {
         impl UnitEntry for $typ {
@@ -74,33 +76,12 @@ macro_rules! impl_for_types {
                 Self::from_str(input.as_ref())
             }
         }
+
+        impl EntryInner for $typ {}
     };
     ($x:ty, $($y:ty),+) => {
         impl_for_types!($x);
         impl_for_types!($($y),+);
-    };
-}
-
-macro_rules! impl_for_vec_types {
-    ($typ:ty) => {
-        impl UnitEntry for Vec<$typ> {
-            type Error = <$typ as FromStr>::Err;
-            fn parse_from_str<S: AsRef<str>>(
-                input: S,
-            ) -> std::result::Result<Self, Self::Error> {
-                let input = input.as_ref().split_ascii_whitespace();
-                let mut result = Vec::new();
-                for value in input {
-                    let member = <$typ>::from_str(value)?;
-                    result.push(member);
-                }
-                Ok(result)
-            }
-        }
-    };
-    ($x:ty, $($y:ty),+) => {
-        impl_for_vec_types!($x);
-        impl_for_vec_types!($($y),+);
     };
 }
 
@@ -144,42 +125,13 @@ impl_for_types!(
     String
 );
 
-impl_for_vec_types!(
-    IpAddr,
-    SocketAddr,
-    bool,
-    char,
-    f32,
-    f64,
-    i8,
-    i16,
-    i32,
-    i64,
-    i128,
-    isize,
-    u8,
-    u16,
-    u32,
-    u64,
-    u128,
-    usize,
-    OsString,
-    Ipv4Addr,
-    Ipv6Addr,
-    SocketAddrV4,
-    SocketAddrV6,
-    NonZeroI8,
-    NonZeroI16,
-    NonZeroI32,
-    NonZeroI64,
-    NonZeroI128,
-    NonZeroIsize,
-    NonZeroU8,
-    NonZeroU16,
-    NonZeroU32,
-    NonZeroU64,
-    NonZeroU128,
-    NonZeroUsize,
-    PathBuf,
-    String
-);
+impl<T: UnitEntry + EntryInner> UnitEntry for Vec<T> {
+    type Error = <T as UnitEntry>::Error;
+    fn parse_from_str<S: AsRef<str>>(input: S) -> std::result::Result<Self, Self::Error> {
+        let mut result = Vec::new();
+        for value in input.as_ref().split_ascii_whitespace() {
+            result.push(T::parse_from_str(value)?);
+        }
+        Ok(result)
+    }
+}

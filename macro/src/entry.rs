@@ -67,6 +67,8 @@ pub(crate) fn gen_entry_derives(input: DeriveInput) -> syn::Result<TokenStream> 
                     }
                 }
             }
+
+            impl systemd_parser::internal::EntryInner for #ident {}
         })
     } else {
         Err(Error::new_spanned(
