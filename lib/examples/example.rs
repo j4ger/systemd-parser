@@ -37,8 +37,9 @@ pub struct AdvancedSection {
     /// a vector config field
     Vector: Vec<String>,
 
-    // /// a config field with values within an enum
-    // enum_field: MyEnum,
+    /// a config field with values within an enum
+    Enum: MyEnum,
+
     /// a config field with custom key name
     #[entry(key = "AlternativeKey")]
     CustomNamed: String,
@@ -48,11 +49,11 @@ pub struct AdvancedSection {
     DefaultValued: String,
 }
 
-// #[derive(UnitEntry)]
-// enum MyEnum {
-//     Val1,
-//     Val2,
-// }
+#[derive(UnitEntry, Debug)]
+enum MyEnum {
+    Val1,
+    Val2,
+}
 
 fn main() {
     let result = Unit::load("examples/example.unit").unwrap();

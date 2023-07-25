@@ -1,6 +1,6 @@
 use proc_macro2::TokenStream;
 use quote::{quote, ToTokens};
-use syn::{Error, Field};
+use syn::{Data, DeriveInput, Error, Field};
 
 use crate::{attribute::EntryAttributes, transform_default::transform_default};
 
@@ -42,6 +42,36 @@ pub(crate) fn gen_entry_parse(field: &Field) -> Result<TokenStream, Error> {
     Ok(result)
 }
 
-// pub(crate) fn gen_entry_derives(input: DeriveInput) -> syn::Result<TokenStream> {
-//     todo!()
-// }
+pub(crate) fn gen_entry_derives(input: DeriveInput) -> syn::Result<TokenStream> {
+    if let Data::Enum(inner) = input.data {
+        let ident = &input.ident;
+        let mut match_arms = Vec::new();
+
+        for variant in inner.variants.iter() {
+            let name = &variant.ident;
+            let value = format!("{}", name);
+            // use discrimnant for alt-key
+            let result = quote! {
+                #value => Ok(Self::#name)
+            };
+            match_arms.push(result);
+        }
+
+        Ok(quote! {
+            impl systemd_parser::internal::UnitEntry for #ident {
+                type Error = ();
+                fn parse_from_str<S: AsRef<str>>(input: S) -> std::result::Result<Self, Self::Error> {
+                    match input.as_ref() {
+                        #( #match_arms ,)*
+                        _ => Err(()),
+                    }
+                }
+            }
+        })
+    } else {
+        Err(Error::new_spanned(
+            input,
+            "UnitEntry can only be derived on enum definitions.",
+        ))
+    }
+}
