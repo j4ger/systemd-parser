@@ -41,7 +41,6 @@ impl UnitEntry for Duration {
                 "months" | "month" | "M" => Duration::days(int * SECONDS_IN_MONTH),
                 "years" | "year" | "y" => Duration::days(int * SECONDS_IN_YEAR),
                 _ => {
-                    dbg!("unmatched suffix: {suffix}");
                     return Err(());
                 }
             })
@@ -66,7 +65,6 @@ impl UnitEntry for Duration {
                     continue;
                 }
                 _ => {
-                    dbg!("unmatched token: {cursor}");
                     return Err(());
                 }
             }
@@ -74,8 +72,10 @@ impl UnitEntry for Duration {
         if !integer.is_empty() & !suffix.is_empty() {
             let partial = segment(&mut integer, &mut suffix)?;
             result.push(partial);
+        } else if !integer.is_empty() & suffix.is_empty() & result.is_empty() {
+            let int: i64 = integer.iter().collect::<String>().parse().map_err(|_| ())?;
+            result.push(Duration::seconds(int));
         } else {
-            dbg!("empty");
             return Err(());
         }
 
@@ -119,5 +119,15 @@ mod tests {
             let parse = Duration::parse_from_str(each.0).unwrap();
             assert_eq!(parse, each.1);
         }
+    }
+
+    #[test]
+    fn unitless() {
+        let parse = Duration::parse_from_str("114").unwrap();
+        let target = Duration::seconds(114);
+        assert_eq!(parse, target);
+
+        let parse = Duration::parse_from_str("114d514");
+        assert!(parse.is_err());
     }
 }
