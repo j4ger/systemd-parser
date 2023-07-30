@@ -43,6 +43,7 @@ impl SectionAttributes {
 pub(crate) struct EntryAttributes {
     pub(crate) default: Option<Expr>,
     pub(crate) key: Option<TokenStream>,
+    pub(crate) multiple: bool,
 }
 
 impl Default for EntryAttributes {
@@ -50,6 +51,7 @@ impl Default for EntryAttributes {
         Self {
             default: None,
             key: None,
+            multiple: false,
         }
     }
 }
@@ -69,6 +71,10 @@ impl EntryAttributes {
                         nested.input.parse::<Token![=]>()?;
                         let value: LitStr = nested.input.parse()?;
                         result.key = Some(value.into_token_stream());
+                        Ok(())
+                    } else if nested.path.is_ident("multiple") {
+                        result.multiple = true;
+                        todo!("needs to be implemented");
                         Ok(())
                     } else {
                         Err(Error::new_spanned(attribute, "Not a valid attribute."))

@@ -3,7 +3,7 @@ Field=test
 
 [Section2]
 Regular=reg
-Private=pri
+Private = pri
 AlternativeKey=cus
 DefaultValued=def
 Vector=string1 string2
