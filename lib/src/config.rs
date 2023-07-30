@@ -1,6 +1,5 @@
-use snafu::ResultExt;
-
 use crate::{error::ReadFileSnafu, internal::Error};
+use snafu::ResultExt;
 use std::{
     collections::HashMap,
     ffi::OsString,
@@ -88,7 +87,6 @@ macro_rules! impl_for_types {
 impl_for_types!(
     IpAddr,
     SocketAddr,
-    bool,
     char,
     f32,
     f64,
@@ -124,6 +122,17 @@ impl_for_types!(
     PathBuf,
     String
 );
+
+impl UnitEntry for bool {
+    type Error = ();
+    fn parse_from_str<S: AsRef<str>>(input: S) -> std::result::Result<Self, Self::Error> {
+        match input.as_ref() {
+            "1" | "yes" | "true" | "on" => Ok(true),
+            "0" | "no" | "false" | "off" => Ok(false),
+            _ => Err(()),
+        }
+    }
+}
 
 impl<T: UnitEntry + EntryInner> UnitEntry for Vec<T> {
     type Error = <T as UnitEntry>::Error;

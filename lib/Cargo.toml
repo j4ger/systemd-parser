@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+chrono = "0.4.26"
 pest = "2.7.0"
 pest_derive = "2.7.0"
 snafu = "0.7.4"
