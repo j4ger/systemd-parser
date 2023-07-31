@@ -19,6 +19,10 @@ pub type Result<T, E = Error> = std::result::Result<T, E>;
 /// explicitly derived by using `#[derive(UnitConfig)]`
 pub trait UnitConfig: Sized {
     fn parse(__source: &HashMap<String, HashMap<String, String>>) -> Result<Self>;
+    fn load_from_string<S: AsRef<str>>(source: S) -> Result<Self> {
+        let map = crate::parser::parse(source.as_ref())?;
+        Self::parse(&map)
+    }
     fn load<S: AsRef<str>>(__path: S) -> Result<Self> {
         let path = Path::new(__path.as_ref());
         let mut file = File::open(path).context(ReadFileSnafu {
@@ -28,8 +32,7 @@ pub trait UnitConfig: Sized {
         file.read_to_string(&mut content).context(ReadFileSnafu {
             path: path.to_string_lossy().to_string(),
         })?;
-        let map = crate::parser::parse(content)?;
-        Self::parse(&map)
+        Self::load_from_string(content)
     }
 }
 
