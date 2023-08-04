@@ -1,104 +1,105 @@
 use crate::{config::Result, error::*};
-use pest::Parser;
+use pest::{iterators::Pairs, Parser};
 use pest_derive::Parser;
-use snafu::{ensure, ResultExt};
-use std::{collections::HashMap, fs::File, io::Read, path::Path};
+use snafu::ResultExt;
 
 #[derive(Parser, Debug)]
 #[grammar = "unit.pest"]
 pub struct UnitFileParser;
 
-type Output = Result<HashMap<String, HashMap<String, String>>>;
+pub struct UnitParser<'a> {
+    inner: Pairs<'a, Rule>,
+}
 
-pub fn parse<S: AsRef<str>>(input: S) -> Output {
-    let mut parse =
-        UnitFileParser::parse(Rule::unit_file, input.as_ref()).context(ParsingSnafu {})?;
-    // should never fail since rule unit_file restricts SOI and EOI
-    let sections = parse.next().unwrap().into_inner();
+impl<'a> UnitParser<'a> {
+    pub(crate) fn new(input: &'a str) -> Result<Self> {
+        let mut parse =
+            UnitFileParser::parse(Rule::unit_file, input.as_ref()).context(ParsingSnafu {})?;
+        // should never fail since rule unit_file restricts SOI and EOI
+        let sections = parse.next().unwrap().into_inner();
+        Ok(Self { inner: sections })
+    }
+}
 
-    let mut result = HashMap::new();
-
-    for section in sections {
-        if section.as_rule() == Rule::EOI {
-            break;
+impl<'a> Iterator for UnitParser<'a> {
+    type Item = Result<SectionParser<'a>>;
+    fn next(&mut self) -> Option<Self::Item> {
+        let item = self.inner.next().unwrap();
+        if item.as_rule() == Rule::EOI {
+            return None;
         }
 
-        ensure!(
-            section.as_rule() == Rule::section,
-            SectionSnafu {
-                actual: section.as_rule(),
-            }
-        );
+        if item.as_rule() != Rule::section {
+            return Some(Err(Error::SectionError {
+                actual: item.as_rule(),
+            }));
+        }
 
-        let mut inner = section.into_inner();
+        let mut inner = item.into_inner();
 
-        // should not fail since sectors minimum is restricted
         let first_item = inner.next().unwrap();
-        // probably also not needed as it would violate grammar test, but if we make the grammar
+
+        // probably also not needed as it would have already violated grammar test, but if we make the grammar
         // less restrictive, then error messages would be more detailed
-        ensure!(
-            first_item.as_rule() == Rule::section_header,
-            SectionNameSnafu {
-                actual: first_item.as_rule()
+        if first_item.as_rule() != Rule::section_header {
+            return Some(Err(Error::SectionNameError {
+                actual: first_item.as_rule(),
+            }));
+        }
+
+        let section_name = first_item.as_str();
+
+        Some(Ok(SectionParser {
+            name: section_name,
+            inner,
+        }))
+    }
+}
+
+pub struct SectionParser<'a> {
+    name: &'a str,
+    inner: Pairs<'a, Rule>,
+}
+
+impl<'a> Iterator for SectionParser<'a> {
+    type Item = Result<(String, String)>;
+    fn next(&mut self) -> Option<Self::Item> {
+        let entry = self.inner.next();
+        if let Some(entry) = entry {
+            if entry.as_rule() != Rule::entry {
+                return Some(Err(Error::EntryError {
+                    actual: entry.as_rule(),
+                }));
             }
-        );
-        let section_name = first_item.as_str().to_string();
-
-        let mut entries = HashMap::new();
-
-        for entry in inner {
-            ensure!(
-                entry.as_rule() == Rule::entry,
-                EntrySnafu {
-                    actual: entry.as_rule()
-                }
-            );
 
             let mut entry_inner = entry.into_inner();
 
             // should not fail as the contents of an entry is restricted
             let key = entry_inner.next().unwrap();
-            ensure!(
-                key.as_rule() == Rule::key,
-                EntryKeySnafu {
-                    actual: key.as_rule()
-                }
-            );
+            if key.as_rule() != Rule::key {
+                return Some(Err(Error::EntryKeyError {
+                    actual: key.as_rule(),
+                }));
+            }
             let key = key.as_str().to_string();
 
             // should not fail as the contents of an entry is restricted
             let values = entry_inner.next().unwrap();
-            ensure!(
-                values.as_rule() == Rule::value,
-                EntryValueSnafu {
-                    actual: values.as_rule()
-                }
-            );
+            if values.as_rule() != Rule::value {
+                return Some(Err(Error::EntryValueError {
+                    actual: values.as_rule(),
+                }));
+            }
+
             let mut value = String::new();
             for line in values.into_inner() {
                 let partial = line.as_str().trim_end_matches("\\\n");
                 value.push_str(partial);
             }
 
-            entries.insert(key, value);
+            return Some(Ok((key, value)));
+        } else {
+            return None;
         }
-
-        result.insert(section_name, entries);
     }
-
-    ensure!(!result.is_empty(), NoSectionSnafu {});
-
-    Ok(result)
-}
-
-pub fn parse_file<S: AsRef<Path>>(input_file: S) -> Output {
-    let path = input_file.as_ref();
-    let mut content = String::new();
-    let mut file = File::open(path).context(ReadFileSnafu {
-        path: path.to_string_lossy().to_string(),
-    })?;
-    file.read_to_string(&mut content).context(ReadFileSnafu {
-        path: path.to_string_lossy().to_string(),
-    })?;
-    parse(content)
 }

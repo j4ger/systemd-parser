@@ -1,4 +1,8 @@
-use crate::{error::ReadFileSnafu, internal::Error};
+use crate::{
+    error::ReadFileSnafu,
+    internal::Error,
+    parser::{SectionParser, UnitParser},
+};
 use snafu::ResultExt;
 use std::{
     collections::HashMap,
@@ -18,10 +22,10 @@ pub type Result<T, E = Error> = std::result::Result<T, E>;
 
 /// explicitly derived by using `#[derive(UnitConfig)]`
 pub trait UnitConfig: Sized {
-    fn parse(__source: &HashMap<String, HashMap<String, String>>) -> Result<Self>;
+    fn parse(__source: UnitParser) -> Result<Self>;
     fn load_from_string<S: AsRef<str>>(source: S) -> Result<Self> {
-        let map = crate::parser::parse(source.as_ref())?;
-        Self::parse(&map)
+        let parser = crate::parser::UnitParser::new(source.as_ref())?;
+        Self::parse(parser)
     }
     fn load<S: AsRef<str>>(__path: S) -> Result<Self> {
         let path = Path::new(__path.as_ref());
@@ -38,10 +42,7 @@ pub trait UnitConfig: Sized {
 
 /// explicitly derived by using `#[derive(UnitSection)]`
 pub trait UnitSection: Sized {
-    fn __parse_section<S: AsRef<str>>(
-        __source: &HashMap<String, HashMap<String, String>>,
-        __key: S,
-    ) -> Result<Option<Self>>;
+    fn __parse_section(__source: SectionParser) -> Result<Option<Self>>;
 }
 
 /// automatically derived for all supported types
