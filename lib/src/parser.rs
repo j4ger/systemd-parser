@@ -57,12 +57,12 @@ impl<'a> Iterator for UnitParser<'a> {
 }
 
 pub struct SectionParser<'a> {
-    name: &'a str,
+    pub name: &'a str,
     inner: Pairs<'a, Rule>,
 }
 
 impl<'a> Iterator for SectionParser<'a> {
-    type Item = Result<(String, String)>;
+    type Item = Result<(&'a str, String)>;
     fn next(&mut self) -> Option<Self::Item> {
         let entry = self.inner.next();
         if let Some(entry) = entry {
@@ -81,7 +81,7 @@ impl<'a> Iterator for SectionParser<'a> {
                     actual: key.as_rule(),
                 }));
             }
-            let key = key.as_str().to_string();
+            let key = key.as_str();
 
             // should not fail as the contents of an entry is restricted
             let values = entry_inner.next().unwrap();

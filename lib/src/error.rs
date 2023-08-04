@@ -23,6 +23,9 @@ pub enum Error {
     #[snafu(display("Expecting section name but found {:?}.", actual))]
     SectionNameError { actual: Rule },
 
+    #[snafu(display("Failed to parse section {}.", key))]
+    SectionParsingError { key: String },
+
     #[snafu(display("Expecting entry but found {:?}.", actual))]
     EntryError { actual: Rule },
 

@@ -5,7 +5,6 @@ use crate::{
 };
 use snafu::ResultExt;
 use std::{
-    collections::HashMap,
     ffi::OsString,
     fs::File,
     io::Read,
@@ -49,22 +48,6 @@ pub trait UnitSection: Sized {
 pub trait UnitEntry: Sized {
     type Error;
     fn parse_from_str<S: AsRef<str>>(input: S) -> std::result::Result<Self, Self::Error>;
-    fn __parse_entry<S: AsRef<str>>(
-        __source: &HashMap<String, String>,
-        __key: S,
-    ) -> Result<Option<Self>> {
-        let key = __key.as_ref();
-        match __source.get(key) {
-            None => Ok(None),
-            Some(value) => {
-                let value = Self::parse_from_str(value).map_err(|_| Error::ValueParsingError {
-                    key: key.to_string(),
-                    value: value.to_string(),
-                })?;
-                Ok(Some(value))
-            }
-        }
-    }
 }
 
 pub trait EntryInner {}
