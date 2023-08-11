@@ -19,8 +19,14 @@ pub(crate) fn gen_entry_init(field: &Field) -> Result<TokenStream> {
         field,
         "Tuple structs are not supported.",
     ))?;
-    Ok(quote! {
-        let mut #name = None;
+    let attributes = EntryAttributes::parse_vec(&field.attrs)?;
+    Ok(match attributes.multiple {
+        false => quote! {
+            let mut #name = None;
+        },
+        true => quote! {
+            let mut #name = Vec::new();
+        },
     })
 }
 
@@ -35,8 +41,22 @@ pub(crate) fn gen_entry_parse(field: &Field) -> Result<TokenStream> {
         .key
         .unwrap_or((format!("{}", name)).into_token_stream());
 
-    let result = match attributes.default {
-        Some(default) => {
+    let result = match (attributes.default, attributes.multiple) {
+        (_, true) => {
+            quote! {
+                #key => {
+                    match systemd_parser::internal::UnitEntry::parse_from_str(__pair.1.as_str()){
+                        Ok(__inner) => {
+                            #name.push(__inner);
+                        }
+                        Err(_) => {
+                            log::warn!("Failed to parse {} for key {}, ignoring.", __pair.0, __pair.1);
+                        }
+                    }
+                }
+            }
+        }
+        (Some(default), false) => {
             let default = transform_default(ty, &default)?;
             quote! {
                 #key => {
@@ -46,7 +66,7 @@ pub(crate) fn gen_entry_parse(field: &Field) -> Result<TokenStream> {
                 }
             }
         }
-        None => {
+        (None, false) => {
             quote! {
                 #key => {
                     let __value: #ty = systemd_parser::internal::UnitEntry::parse_from_str(__pair.1.as_str())
@@ -71,14 +91,21 @@ pub(crate) fn gen_entry_finalize(field: &Field) -> Result<TokenStream> {
         .key
         .unwrap_or((format!("{}", name)).into_token_stream());
 
-    let result = match attributes.default {
-        Some(default) => {
+    let result = match (attributes.default, attributes.multiple) {
+        (_, true) => {
+            quote! {
+                if #name.is_empty() {
+                    log::warn!("{} is defined but no value is present.", #key);
+                }
+            }
+        }
+        (Some(default), false) => {
             let default = transform_default(ty, &default)?;
             quote! {
                 let #name = #name.unwrap_or(#default);
             }
         }
-        None => {
+        (None, false) => {
             quote! {
                 let #name = #name.ok_or(systemd_parser::internal::Error::EntryMissingError { key: #key.to_string()})?;
             }

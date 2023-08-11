@@ -74,7 +74,6 @@ impl EntryAttributes {
                         Ok(())
                     } else if nested.path.is_ident("multiple") {
                         result.multiple = true;
-                        todo!("needs to be implemented");
                         Ok(())
                     } else {
                         Err(Error::new_spanned(attribute, "Not a valid attribute."))
