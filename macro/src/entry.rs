@@ -45,6 +45,10 @@ pub(crate) fn gen_entry_parse(field: &Field) -> Result<TokenStream> {
         (_, true) => {
             quote! {
                 #key => {
+                    if __pair.1.as_str().is_empty() {
+                        #name.clear();
+                        continue;
+                    }
                     match systemd_parser::internal::UnitEntry::parse_from_str(__pair.1.as_str()){
                         Ok(__inner) => {
                             #name.push(__inner);
