@@ -52,9 +52,13 @@ pub struct AdvancedSection {
     /// a duration config field
     Duration: Duration,
 
-    /// an entry that can appear multiple times
+    /// a field that can appear multiple times
     #[entry(multiple)]
     Multiple: Vec<i64>,
+
+    /// an optional field
+    #[entry(optional)]
+    Optional: Option<u64>,
 }
 
 #[derive(UnitEntry, Debug)]

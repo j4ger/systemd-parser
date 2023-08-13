@@ -7,6 +7,7 @@ mod attribute;
 mod entry;
 mod section;
 mod transform_default;
+mod type_transform;
 mod unit;
 
 #[proc_macro_derive(UnitConfig, attributes(section))]

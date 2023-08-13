@@ -1,6 +1,7 @@
 use crate::{
     attribute::SectionAttributes,
     entry::{gen_entry_ensure, gen_entry_finalize, gen_entry_init, gen_entry_parse},
+    type_transform::is_option,
 };
 use proc_macro2::TokenStream;
 use quote::{quote, ToTokens};
@@ -87,7 +88,7 @@ pub(crate) fn gen_section_parse(field: &Field) -> Result<TokenStream> {
                         fn assert_impl<T: Default>() {}
                         assert_impl::<#ty>();
                     };
-                    let __value: #ty = systemd_parser::internal::UnitSection::__parse_section(__section)?
+                    let __value = systemd_parser::internal::UnitSection::__parse_section(__section)?
                         .unwrap_or(#ty::default());
                     #name = Some(__value);
                 }
@@ -96,7 +97,7 @@ pub(crate) fn gen_section_parse(field: &Field) -> Result<TokenStream> {
         false => {
             quote! {
                 #key => {
-                    let __value: #ty = systemd_parser::internal::UnitSection::__parse_section(__section)?
+                    let __value = systemd_parser::internal::UnitSection::__parse_section(__section)?
                         .ok_or(systemd_parser::internal::Error::SectionParsingError{ key: #key.to_string() })?;
                     #name = Some(__value);
                 }
@@ -128,16 +129,25 @@ pub(crate) fn gen_section_finalize(field: &Field) -> Result<TokenStream> {
         .key
         .unwrap_or((format!("{}", name)).into_token_stream());
 
-    let result = match attributes.default {
-        true => {
+    let result = match (attributes.default, attributes.optional) {
+        (true, false) => {
             quote! {
                 let #name: #ty = #name.unwrap_or(Default::default());
             }
         }
-        false => {
+        (false, false) => {
             quote! {
                 let #name = #name.ok_or(systemd_parser::internal::Error::SectionMissingError { key: #key.to_string()})?;
             }
+        }
+        (_, true) => {
+            if !is_option(ty) {
+                return Err(Error::new_spanned(
+                    ty,
+                    "`optional` attributed field should be `Option`s.",
+                ));
+            }
+            quote! {}
         }
     };
 

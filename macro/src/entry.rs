@@ -2,7 +2,11 @@ use proc_macro2::TokenStream;
 use quote::{quote, ToTokens};
 use syn::{Data, DeriveInput, Error, Field, Result};
 
-use crate::{attribute::EntryAttributes, transform_default::transform_default};
+use crate::{
+    attribute::EntryAttributes,
+    transform_default::transform_default,
+    type_transform::{is_option, is_vec},
+};
 
 pub(crate) fn gen_entry_ensure(field: &Field) -> TokenStream {
     let ty = &field.ty;
@@ -64,7 +68,7 @@ pub(crate) fn gen_entry_parse(field: &Field) -> Result<TokenStream> {
             let default = transform_default(ty, &default)?;
             quote! {
                 #key => {
-                    let __value: #ty = systemd_parser::internal::UnitEntry::parse_from_str(__pair.1.as_str())
+                    let __value = systemd_parser::internal::UnitEntry::parse_from_str(__pair.1.as_str())
                         .unwrap_or(#default);
                     #name = Some(__value);
                 }
@@ -73,7 +77,7 @@ pub(crate) fn gen_entry_parse(field: &Field) -> Result<TokenStream> {
         (None, false) => {
             quote! {
                 #key => {
-                    let __value: #ty = systemd_parser::internal::UnitEntry::parse_from_str(__pair.1.as_str())
+                    let __value = systemd_parser::internal::UnitEntry::parse_from_str(__pair.1.as_str())
                         .map_err(|_| systemd_parser::internal::Error::ValueParsingError { key: #key.to_string(), value: __pair.1.to_string() })?;
                     #name = Some(__value);
                 }
@@ -95,24 +99,39 @@ pub(crate) fn gen_entry_finalize(field: &Field) -> Result<TokenStream> {
         .key
         .unwrap_or((format!("{}", name)).into_token_stream());
 
-    let result = match (attributes.default, attributes.multiple) {
-        (_, true) => {
+    let result = match (attributes.default, attributes.multiple, attributes.optional) {
+        (_, true, false) => {
+            if !is_vec(ty) {
+                return Err(Error::new_spanned(
+                    ty,
+                    "`multiple` attributed fields should be `Vec`s.",
+                ));
+            }
             quote! {
                 if #name.is_empty() {
                     log::warn!("{} is defined but no value is present.", #key);
                 }
             }
         }
-        (Some(default), false) => {
+        (Some(default), false, false) => {
             let default = transform_default(ty, &default)?;
             quote! {
                 let #name = #name.unwrap_or(#default);
             }
         }
-        (None, false) => {
+        (None, false, false) => {
             quote! {
                 let #name = #name.ok_or(systemd_parser::internal::Error::EntryMissingError { key: #key.to_string()})?;
             }
+        }
+        (_, _, true) => {
+            if !is_option(ty) {
+                return Err(Error::new_spanned(
+                    ty,
+                    "`optional` attributed fields should be `Option`s.",
+                ));
+            }
+            quote! {}
         }
     };
     Ok(result)
