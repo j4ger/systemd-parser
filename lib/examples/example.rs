@@ -12,6 +12,9 @@ pub struct Unit {
     pub Section1: SimpleSection,
 
     pub Section2: AdvancedSection,
+
+    #[section(optional)]
+    pub Section3: OptionalSection,
 }
 
 #[derive(UnitSection, Debug)]
@@ -60,6 +63,9 @@ pub struct AdvancedSection {
     #[entry(optional)]
     Optional: Option<u64>,
 }
+
+#[derive(UnitSection, Debug)]
+struct OptionalSection {}
 
 #[derive(UnitEntry, Debug)]
 enum MyEnum {
