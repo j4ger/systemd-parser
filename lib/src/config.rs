@@ -21,10 +21,10 @@ pub type Result<T, E = Error> = std::result::Result<T, E>;
 
 /// explicitly derived by using `#[derive(UnitConfig)]`
 pub trait UnitConfig: Sized {
-    fn parse(__source: UnitParser) -> Result<Self>;
+    fn __parse_unit(__source: UnitParser) -> Result<Self>;
     fn load_from_string<S: AsRef<str>>(source: S) -> Result<Self> {
         let parser = crate::parser::UnitParser::new(source.as_ref())?;
-        Self::parse(parser)
+        Self::__parse_unit(parser)
     }
     fn load<S: AsRef<str>>(__path: S) -> Result<Self> {
         let path = Path::new(__path.as_ref());

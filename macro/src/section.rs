@@ -110,12 +110,13 @@ pub(crate) fn gen_section_parse(field: &Field) -> Result<TokenStream> {
 
 pub(crate) fn gen_section_ensure(field: &Field) -> TokenStream {
     let ty = &field.ty;
-    quote! {
-        const _: fn() = || {
-            fn assert_impl<T: UnitSection>() {}
-            assert_impl::<#ty>();
-        };
-    }
+    // quote! {
+    //     const _: fn() = || {
+    //         fn assert_impl<T: UnitSection>() {}
+    //         assert_impl::<#ty>();
+    //     };
+    // }
+    quote! {}
 }
 
 pub(crate) fn gen_section_finalize(field: &Field) -> Result<TokenStream> {

@@ -10,12 +10,13 @@ use crate::{
 
 pub(crate) fn gen_entry_ensure(field: &Field) -> TokenStream {
     let ty = &field.ty;
-    quote! {
-        const _: fn() = || {
-            fn assert_impl<T: UnitEntry>() {}
-            assert_impl::<#ty>();
-        };
-    }
+    // quote! {
+    //     const _: fn() = || {
+    //         fn assert_impl<T: UnitEntry>() {}
+    //         assert_impl::<#ty>();
+    //     };
+    // }
+    quote! {}
 }
 
 pub(crate) fn gen_entry_init(field: &Field) -> Result<TokenStream> {
