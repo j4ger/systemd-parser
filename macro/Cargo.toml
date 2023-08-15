@@ -1,5 +1,5 @@
 [package]
-name = "systemd_parser_macro"
+name = "unit_parser_macro"
 version = "0.1.0"
 edition = "2021"
 

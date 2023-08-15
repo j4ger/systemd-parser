@@ -35,8 +35,8 @@ pub fn gen_unit_derives(input: DeriveInput) -> syn::Result<TokenStream> {
     let ident = &input.ident;
 
     let result = quote! {
-         impl systemd_parser::internal::UnitConfig for #ident {
-            fn __parse_unit(__source: systemd_parser::internal::UnitParser) -> systemd_parser::internal::Result<Self> {
+         impl unit_parser::internal::UnitConfig for #ident {
+            fn __parse_unit(__source: unit_parser::internal::UnitParser) -> unit_parser::internal::Result<Self> {
                 #( #section_ensures )*
                 #( #section_inits )*
                 for __section in __source {

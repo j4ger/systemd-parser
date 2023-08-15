@@ -2,7 +2,7 @@
 
 use chrono::Duration;
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use systemd_parser::prelude::*;
+use unit_parser::prelude::*;
 
 #[derive(UnitConfig)]
 struct Unit {

@@ -1,7 +1,7 @@
 #![allow(non_snake_case, dead_code)]
 
 use chrono::Duration;
-use systemd_parser::prelude::*;
+use unit_parser::prelude::*;
 
 #[derive(UnitConfig, Debug)]
 pub struct Unit {

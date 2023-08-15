@@ -696,28 +696,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "systemd_parser"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "criterion",
- "log",
- "pest",
- "pest_derive",
- "snafu",
- "systemd_parser_macro",
-]
-
-[[package]]
-name = "systemd_parser_macro"
-version = "0.1.0"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.25",
-]
-
-[[package]]
 name = "textwrap"
 version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -781,6 +759,28 @@ name = "unicode-ident"
 version = "1.0.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "22049a19f4a68748a168c0fc439f9516686aa045927ff767eca0a85101fb6e73"
+
+[[package]]
+name = "unit_parser"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "criterion",
+ "log",
+ "pest",
+ "pest_derive",
+ "snafu",
+ "unit_parser_macro",
+]
+
+[[package]]
+name = "unit_parser_macro"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.25",
+]
 
 [[package]]
 name = "version_check"

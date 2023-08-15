@@ -36,8 +36,8 @@ pub fn gen_section_derives(input: DeriveInput) -> Result<TokenStream> {
     let ident = &input.ident;
 
     let result = quote! {
-        impl systemd_parser::internal::UnitSection for #ident {
-            fn __parse_section(__source: systemd_parser::internal::SectionParser) -> systemd_parser::internal::Result<Option<Self>> {
+        impl unit_parser::internal::UnitSection for #ident {
+            fn __parse_section(__source: unit_parser::internal::SectionParser) -> unit_parser::internal::Result<Option<Self>> {
                 # ( #entry_inits )*
                 for __entry in __source {
                     let __pair = __entry?;
@@ -88,7 +88,7 @@ pub(crate) fn gen_section_parse(field: &Field) -> Result<TokenStream> {
                         fn assert_impl<T: Default>() {}
                         assert_impl::<#ty>();
                     };
-                    let __value = systemd_parser::internal::UnitSection::__parse_section(__section)?
+                    let __value = unit_parser::internal::UnitSection::__parse_section(__section)?
                         .unwrap_or(#ty::default());
                     #name = Some(__value);
                 }
@@ -97,8 +97,8 @@ pub(crate) fn gen_section_parse(field: &Field) -> Result<TokenStream> {
         false => {
             quote! {
                 #key => {
-                    let __value = systemd_parser::internal::UnitSection::__parse_section(__section)?
-                        .ok_or(systemd_parser::internal::Error::SectionParsingError{ key: #key.to_string() })?;
+                    let __value = unit_parser::internal::UnitSection::__parse_section(__section)?
+                        .ok_or(unit_parser::internal::Error::SectionParsingError{ key: #key.to_string() })?;
                     #name = Some(__value);
                 }
             }
@@ -138,7 +138,7 @@ pub(crate) fn gen_section_finalize(field: &Field) -> Result<TokenStream> {
         }
         (false, false) => {
             quote! {
-                let #name = #name.ok_or(systemd_parser::internal::Error::SectionMissingError { key: #key.to_string()})?;
+                let #name = #name.ok_or(unit_parser::internal::Error::SectionMissingError { key: #key.to_string()})?;
             }
         }
         (_, true) => {

@@ -54,7 +54,7 @@ pub(crate) fn gen_entry_parse(field: &Field) -> Result<TokenStream> {
                         #name.clear();
                         continue;
                     }
-                    match systemd_parser::internal::UnitEntry::parse_from_str(__pair.1.as_str()){
+                    match unit_parser::internal::UnitEntry::parse_from_str(__pair.1.as_str()){
                         Ok(__inner) => {
                             #name.push(__inner);
                         }
@@ -69,7 +69,7 @@ pub(crate) fn gen_entry_parse(field: &Field) -> Result<TokenStream> {
             let default = transform_default(ty, &default)?;
             quote! {
                 #key => {
-                    let __value = systemd_parser::internal::UnitEntry::parse_from_str(__pair.1.as_str())
+                    let __value = unit_parser::internal::UnitEntry::parse_from_str(__pair.1.as_str())
                         .unwrap_or(#default);
                     #name = Some(__value);
                 }
@@ -78,8 +78,8 @@ pub(crate) fn gen_entry_parse(field: &Field) -> Result<TokenStream> {
         (None, false) => {
             quote! {
                 #key => {
-                    let __value = systemd_parser::internal::UnitEntry::parse_from_str(__pair.1.as_str())
-                        .map_err(|_| systemd_parser::internal::Error::ValueParsingError { key: #key.to_string(), value: __pair.1.to_string() })?;
+                    let __value = unit_parser::internal::UnitEntry::parse_from_str(__pair.1.as_str())
+                        .map_err(|_| unit_parser::internal::Error::ValueParsingError { key: #key.to_string(), value: __pair.1.to_string() })?;
                     #name = Some(__value);
                 }
             }
@@ -122,7 +122,7 @@ pub(crate) fn gen_entry_finalize(field: &Field) -> Result<TokenStream> {
         }
         (None, false, false) => {
             quote! {
-                let #name = #name.ok_or(systemd_parser::internal::Error::EntryMissingError { key: #key.to_string()})?;
+                let #name = #name.ok_or(unit_parser::internal::Error::EntryMissingError { key: #key.to_string()})?;
             }
         }
         (_, _, true) => {
@@ -154,7 +154,7 @@ pub(crate) fn gen_entry_derives(input: DeriveInput) -> Result<TokenStream> {
         }
 
         Ok(quote! {
-            impl systemd_parser::internal::UnitEntry for #ident {
+            impl unit_parser::internal::UnitEntry for #ident {
                 type Error = ();
                 fn parse_from_str<S: AsRef<str>>(input: S) -> std::result::Result<Self, Self::Error> {
                     match input.as_ref() {
@@ -164,7 +164,7 @@ pub(crate) fn gen_entry_derives(input: DeriveInput) -> Result<TokenStream> {
                 }
             }
 
-            impl systemd_parser::internal::EntryInner for #ident {}
+            impl unit_parser::internal::EntryInner for #ident {}
         })
     } else {
         Err(Error::new_spanned(
