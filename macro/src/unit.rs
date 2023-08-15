@@ -15,7 +15,7 @@ pub fn gen_unit_derives(input: DeriveInput) -> syn::Result<TokenStream> {
 
     if let Data::Struct(data_struct) = &input.data {
         for entry in &data_struct.fields {
-            section_ensures.push(gen_section_ensure(&entry));
+            section_ensures.push(gen_section_ensure(&entry)?);
             section_inits.push(gen_section_init(&entry)?);
             section_parsers.push(gen_section_parse(&entry)?);
             section_finalizes.push(gen_section_finalize(&entry)?);

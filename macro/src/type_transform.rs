@@ -45,7 +45,7 @@ pub(crate) fn is_vec(ty: &Type) -> bool {
 }
 
 // credits: https://stackoverflow.com/a/56264023
-fn extract_type_from_option(ty: &syn::Type) -> Result<&Type, Error> {
+pub(crate) fn extract_type_from_option(ty: &syn::Type) -> Result<&Type, Error> {
     fn extract_type_path(ty: &syn::Type) -> Result<&Path, Error> {
         match *ty {
             syn::Type::Path(ref typepath) if typepath.qself.is_none() => Ok(&typepath.path),
@@ -91,7 +91,7 @@ fn extract_type_from_option(ty: &syn::Type) -> Result<&Type, Error> {
         })
 }
 
-fn extract_type_from_vec(ty: &syn::Type) -> Result<&Type, Error> {
+pub(crate) fn extract_type_from_vec(ty: &syn::Type) -> Result<&Type, Error> {
     fn extract_type_path(ty: &syn::Type) -> Result<&Path, Error> {
         match *ty {
             syn::Type::Path(ref typepath) if typepath.qself.is_none() => Ok(&typepath.path),

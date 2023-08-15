@@ -5,18 +5,23 @@ use syn::{Data, DeriveInput, Error, Field, Result};
 use crate::{
     attribute::EntryAttributes,
     transform_default::transform_default,
-    type_transform::{is_option, is_vec},
+    type_transform::{extract_type_from_option, extract_type_from_vec, is_option, is_vec},
 };
 
-pub(crate) fn gen_entry_ensure(field: &Field) -> TokenStream {
-    let ty = &field.ty;
-    // quote! {
-    //     const _: fn() = || {
-    //         fn assert_impl<T: UnitEntry>() {}
-    //         assert_impl::<#ty>();
-    //     };
-    // }
-    quote! {}
+pub(crate) fn gen_entry_ensure(field: &Field) -> Result<TokenStream> {
+    let mut ty = &field.ty;
+    let attribute = EntryAttributes::parse_vec(&field.attrs)?;
+    if attribute.multiple {
+        ty = extract_type_from_vec(ty)?;
+    } else if (!attribute.must) & (attribute.default.is_none()) {
+        ty = extract_type_from_option(ty)?;
+    }
+    Ok(quote! {
+        const _: fn() = || {
+            fn assert_impl<T: UnitEntry>() {}
+            assert_impl::<#ty>();
+        };
+    })
 }
 
 pub(crate) fn gen_entry_init(field: &Field) -> Result<TokenStream> {

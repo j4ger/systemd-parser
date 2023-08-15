@@ -1,7 +1,7 @@
 use crate::{
     attribute::SectionAttributes,
     entry::{gen_entry_ensure, gen_entry_finalize, gen_entry_init, gen_entry_parse},
-    type_transform::is_option,
+    type_transform::{extract_type_from_option, is_option},
 };
 use proc_macro2::TokenStream;
 use quote::{quote, ToTokens};
@@ -16,7 +16,7 @@ pub fn gen_section_derives(input: DeriveInput) -> Result<TokenStream> {
 
     if let Data::Struct(data_struct) = &input.data {
         for entry in &data_struct.fields {
-            entry_ensures.push(gen_entry_ensure(entry));
+            entry_ensures.push(gen_entry_ensure(entry)?);
             entry_inits.push(gen_entry_init(entry)?);
             entry_parsers.push(gen_entry_parse(entry)?);
             entry_finalizes.push(gen_entry_finalize(entry)?);
@@ -38,6 +38,7 @@ pub fn gen_section_derives(input: DeriveInput) -> Result<TokenStream> {
     let result = quote! {
         impl unit_parser::internal::UnitSection for #ident {
             fn __parse_section(__source: unit_parser::internal::SectionParser) -> unit_parser::internal::Result<Option<Self>> {
+                # ( #entry_ensures )*
                 # ( #entry_inits )*
                 for __entry in __source {
                     let __pair = __entry?;
@@ -108,15 +109,18 @@ pub(crate) fn gen_section_parse(field: &Field) -> Result<TokenStream> {
     Ok(result)
 }
 
-pub(crate) fn gen_section_ensure(field: &Field) -> TokenStream {
-    let ty = &field.ty;
-    // quote! {
-    //     const _: fn() = || {
-    //         fn assert_impl<T: UnitSection>() {}
-    //         assert_impl::<#ty>();
-    //     };
-    // }
-    quote! {}
+pub(crate) fn gen_section_ensure(field: &Field) -> Result<TokenStream> {
+    let mut ty = &field.ty;
+    let attribute = SectionAttributes::parse_vec(&field.attrs)?;
+    if (!attribute.must) & (!attribute.default) {
+        ty = extract_type_from_option(ty)?;
+    }
+    Ok(quote! {
+        const _: fn() = || {
+            fn assert_impl<T: UnitSection>() {}
+            assert_impl::<#ty>();
+        };
+    })
 }
 
 pub(crate) fn gen_section_finalize(field: &Field) -> Result<TokenStream> {
