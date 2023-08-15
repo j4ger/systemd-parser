@@ -100,8 +100,8 @@ pub(crate) fn gen_entry_finalize(field: &Field) -> Result<TokenStream> {
         .key
         .unwrap_or((format!("{}", name)).into_token_stream());
 
-    let result = match (attributes.default, attributes.multiple, attributes.optional) {
-        (_, true, false) => {
+    let result = match (attributes.default, attributes.multiple, attributes.must) {
+        (None, true, true) => {
             if !is_vec(ty) {
                 return Err(Error::new_spanned(
                     ty,
@@ -110,26 +110,52 @@ pub(crate) fn gen_entry_finalize(field: &Field) -> Result<TokenStream> {
             }
             quote! {
                 if #name.is_empty() {
-                    log::warn!("{} is defined but no value is present.", #key);
+                    return Err(unit_parser::internal::Error::EntryMissingError { key: #key.to_string() });
                 }
             }
         }
-        (Some(default), false, false) => {
+        (Some(default), true, _) => {
+            if !is_vec(ty) {
+                return Err(Error::new_spanned(
+                    ty,
+                    "`multiple` attributed fields should be `Vec`s.",
+                ));
+            }
+            quote! {
+                if #name.is_empty() {
+                    #name = #default;
+                }
+            }
+        }
+        (None, true, false) => {
+            if !is_vec(ty) {
+                return Err(Error::new_spanned(
+                    ty,
+                    "`multiple` attributed fields should be `Vec`s.",
+                ));
+            }
+            quote! {
+                if #name.is_empty() {
+                    log::warn!("{} is defined but no value is found.", #key);
+                }
+            }
+        }
+        (Some(default), false, _) => {
             let default = transform_default(ty, &default)?;
             quote! {
                 let #name = #name.unwrap_or(#default);
             }
         }
-        (None, false, false) => {
+        (None, false, true) => {
             quote! {
                 let #name = #name.ok_or(unit_parser::internal::Error::EntryMissingError { key: #key.to_string()})?;
             }
         }
-        (_, _, true) => {
+        (None, _, false) => {
             if !is_option(ty) {
                 return Err(Error::new_spanned(
                     ty,
-                    "`optional` attributed fields should be `Option`s.",
+                    "Fields without either `default` or `must` attributes should be `Option`s.",
                 ));
             }
             quote! {}

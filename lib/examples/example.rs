@@ -8,17 +8,18 @@ pub struct Unit {
     // sections can be attributed with default to fallback to default when not present
     // trait `Default` is required to be implemented
     // sections can also have alternative key name
-    #[section(default, key = "AlternativeKey")]
+    #[section(default, key = "AlternativeKey", must)]
     pub Section1: SimpleSection,
 
+    #[section(must)]
     pub Section2: AdvancedSection,
 
-    #[section(optional)]
     pub Section3: Option<OptionalSection>,
 }
 
 #[derive(UnitSection, Debug)]
 pub struct SimpleSection {
+    #[entry(must)]
     pub Field: String,
 }
 
@@ -33,34 +34,38 @@ impl Default for SimpleSection {
 #[derive(UnitSection, Debug)]
 pub struct AdvancedSection {
     /// a regular public config field
+    #[entry(must)]
     pub Regular: String,
 
     /// a private config field
+    #[entry(must)]
     Private: String,
 
     /// a vector config field
+    #[entry(must)]
     Vector: Vec<String>,
 
     /// a config field with values within an enum
+    #[entry(must)]
     Enum: MyEnum,
 
     /// a config field with custom key name
-    #[entry(key = "AlternativeKey")]
+    #[entry(key = "AlternativeKey", must)]
     CustomNamed: String,
 
     /// a config field with default value
-    #[entry(default = "default-value")]
+    #[entry(default = "default-value", must)]
     DefaultValued: String,
 
     /// a duration config field
+    #[entry(must)]
     Duration: Duration,
 
     /// a field that can appear multiple times
-    #[entry(multiple)]
+    #[entry(multiple, must)]
     Multiple: Vec<i64>,
 
     /// an optional field
-    #[entry(optional)]
     Optional: Option<u64>,
 }
 

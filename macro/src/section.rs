@@ -130,22 +130,22 @@ pub(crate) fn gen_section_finalize(field: &Field) -> Result<TokenStream> {
         .key
         .unwrap_or((format!("{}", name)).into_token_stream());
 
-    let result = match (attributes.default, attributes.optional) {
-        (true, false) => {
+    let result = match (attributes.default, attributes.must) {
+        (true, _) => {
             quote! {
                 let #name: #ty = #name.unwrap_or(Default::default());
             }
         }
-        (false, false) => {
+        (false, true) => {
             quote! {
                 let #name = #name.ok_or(unit_parser::internal::Error::SectionMissingError { key: #key.to_string()})?;
             }
         }
-        (_, true) => {
+        (false, false) => {
             if !is_option(ty) {
                 return Err(Error::new_spanned(
                     ty,
-                    "`optional` attributed field should be `Option`s.",
+                    "Fields without either `must` or `default` attribute should be `Option`s.",
                 ));
             }
             quote! {}

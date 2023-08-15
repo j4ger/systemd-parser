@@ -5,7 +5,7 @@ use syn::{Attribute, Error, Expr, LitStr, Token};
 pub(crate) struct SectionAttributes {
     pub(crate) default: bool,
     pub(crate) key: Option<TokenStream>,
-    pub(crate) optional: bool,
+    pub(crate) must: bool,
 }
 
 impl Default for SectionAttributes {
@@ -13,7 +13,7 @@ impl Default for SectionAttributes {
         Self {
             default: false,
             key: None,
-            optional: false,
+            must: false,
         }
     }
 }
@@ -25,12 +25,6 @@ impl SectionAttributes {
             if attribute.path().is_ident("section") {
                 attribute.parse_nested_meta(|nested| {
                     if nested.path.is_ident("default") {
-                        if result.optional {
-                            return Err(Error::new_spanned(
-                                attribute,
-                                "`optional` and `default` attribute cannot co-exist.",
-                            ));
-                        }
                         result.default = true;
                         Ok(())
                     } else if nested.path.is_ident("key") {
@@ -38,14 +32,8 @@ impl SectionAttributes {
                         let value: LitStr = nested.input.parse()?;
                         result.key = Some(value.into_token_stream());
                         Ok(())
-                    } else if nested.path.is_ident("optional") {
-                        if result.default {
-                            return Err(Error::new_spanned(
-                                attribute,
-                                "`optional` and `default` attribute cannot co-exist.",
-                            ));
-                        }
-                        result.optional = true;
+                    } else if nested.path.is_ident("must") {
+                        result.must = true;
                         Ok(())
                     } else {
                         Err(Error::new_spanned(attribute, "Not a valid attribute."))
@@ -61,7 +49,7 @@ pub(crate) struct EntryAttributes {
     pub(crate) default: Option<Expr>,
     pub(crate) key: Option<TokenStream>,
     pub(crate) multiple: bool,
-    pub(crate) optional: bool,
+    pub(crate) must: bool,
 }
 
 impl Default for EntryAttributes {
@@ -70,7 +58,7 @@ impl Default for EntryAttributes {
             default: None,
             key: None,
             multiple: false,
-            optional: false,
+            must: false,
         }
     }
 }
@@ -84,12 +72,6 @@ impl EntryAttributes {
                     if nested.path.is_ident("default") {
                         nested.input.parse::<Token![=]>()?;
                         let value: Expr = nested.input.parse()?;
-                        if result.optional {
-                            return Err(Error::new_spanned(
-                                attribute,
-                                "`optional` and `default` attribute cannot co-exist.",
-                            ));
-                        }
                         result.default = Some(value);
                         Ok(())
                     } else if nested.path.is_ident("key") {
@@ -98,28 +80,10 @@ impl EntryAttributes {
                         result.key = Some(value.into_token_stream());
                         Ok(())
                     } else if nested.path.is_ident("multiple") {
-                        if result.optional {
-                            return Err(Error::new_spanned(
-                                attribute,
-                                "`optional` and `multiple` attribute cannot co-exist.",
-                            ));
-                        }
                         result.multiple = true;
                         Ok(())
-                    } else if nested.path.is_ident("optional") {
-                        if result.default.is_some() {
-                            return Err(Error::new_spanned(
-                                attribute,
-                                "`optional` and `default` attribute cannot co-exist.",
-                            ));
-                        }
-                        if result.multiple {
-                            return Err(Error::new_spanned(
-                                attribute,
-                                "`optional` and `multiple` attribute cannot co-exist.",
-                            ));
-                        }
-                        result.optional = true;
+                    } else if nested.path.is_ident("must") {
+                        result.must = true;
                         Ok(())
                     } else {
                         Err(Error::new_spanned(attribute, "Not a valid attribute."))
