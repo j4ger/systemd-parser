@@ -7,3 +7,6 @@ dump:
 example:
 	cd lib && cargo run --example example	
 
+advanced:
+	cd lib && cargo run --example advanced
+

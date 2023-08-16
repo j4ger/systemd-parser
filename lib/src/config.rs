@@ -19,12 +19,11 @@ use std::{
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
-/// explicitly derived by using `#[derive(UnitConfig)]`
-pub trait UnitConfig: Sized {
-    fn __parse_unit(__source: UnitParser) -> Result<Self>;
+pub trait UnitConfig: Sized + Clone {
+    fn __parse_unit(__source: UnitParser, __from: Option<&Self>) -> Result<Self>;
     fn load_from_string<S: AsRef<str>>(source: S) -> Result<Self> {
         let parser = crate::parser::UnitParser::new(source.as_ref())?;
-        Self::__parse_unit(parser)
+        Self::__parse_unit(parser, None)
     }
     fn load<S: AsRef<str>>(__path: S) -> Result<Self> {
         let path = Path::new(__path.as_ref());
@@ -39,13 +38,11 @@ pub trait UnitConfig: Sized {
     }
 }
 
-/// explicitly derived by using `#[derive(UnitSection)]`
-pub trait UnitSection: Sized {
-    fn __parse_section(__source: SectionParser) -> Result<Option<Self>>;
+pub trait UnitSection: Sized + Clone {
+    fn __parse_section(__source: SectionParser, __from: Option<Self>) -> Result<Option<Self>>;
 }
 
-/// automatically derived for all supported types
-pub trait UnitEntry: Sized {
+pub trait UnitEntry: Sized + Clone {
     type Error;
     fn parse_from_str<S: AsRef<str>>(input: S) -> std::result::Result<Self, Self::Error>;
 }

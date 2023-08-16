@@ -204,3 +204,42 @@ pub(crate) fn gen_entry_derives(input: DeriveInput) -> Result<TokenStream> {
         ))
     }
 }
+
+pub(crate) fn gen_entry_patch(field: &Field) -> Result<TokenStream> {
+    let name = field.ident.as_ref().ok_or(Error::new_spanned(
+        field,
+        "Tuple structs are not supported.",
+    ))?;
+    let attributes = EntryAttributes::parse_vec(&field.attrs)?;
+
+    let result = match (attributes.must, attributes.multiple) {
+        (true, true) => {
+            quote! {
+                if !#name.is_empty() {
+                    __from.#name = #name;
+                }
+            }
+        }
+        (false, true) => {
+            quote! {
+                __from.#name = #name;
+            }
+        }
+        (true, false) => {
+            quote! {
+                if let Some(__inner) = #name {
+                    __from.#name = __inner;
+                }
+            }
+        }
+        (false, false) => {
+            quote! {
+                if #name.is_some() {
+                    __from.#name = #name;
+                }
+            }
+        }
+    };
+
+    Ok(result)
+}

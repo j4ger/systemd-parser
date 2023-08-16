@@ -3,7 +3,7 @@
 use chrono::Duration;
 use unit_parser::prelude::*;
 
-#[derive(UnitConfig, Debug)]
+#[derive(UnitConfig, Debug, Clone)]
 pub struct Unit {
     // sections can be attributed with default to fallback to default when not present
     // trait `Default` is required to be implemented
@@ -17,7 +17,7 @@ pub struct Unit {
     pub Section3: Option<OptionalSection>,
 }
 
-#[derive(UnitSection, Debug)]
+#[derive(UnitSection, Debug, Clone)]
 pub struct SimpleSection {
     #[entry(must)]
     pub Field: String,
@@ -31,7 +31,7 @@ impl Default for SimpleSection {
     }
 }
 
-#[derive(UnitSection, Debug)]
+#[derive(UnitSection, Debug, Clone)]
 pub struct AdvancedSection {
     /// a regular public config field
     #[entry(must)]
@@ -69,10 +69,10 @@ pub struct AdvancedSection {
     Optional: Option<u64>,
 }
 
-#[derive(UnitSection, Debug)]
+#[derive(UnitSection, Debug, Clone)]
 pub struct OptionalSection {}
 
-#[derive(UnitEntry, Debug)]
+#[derive(UnitEntry, Debug, Clone)]
 enum MyEnum {
     Val1,
     Val2,

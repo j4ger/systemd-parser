@@ -1,5 +1,6 @@
 use crate::section::{
     gen_section_ensure, gen_section_finalize, gen_section_init, gen_section_parse,
+    gen_section_patches,
 };
 use proc_macro2::TokenStream;
 use quote::quote;
@@ -12,6 +13,7 @@ pub fn gen_unit_derives(input: DeriveInput) -> syn::Result<TokenStream> {
     let mut section_inits = Vec::new();
     let mut section_parsers = Vec::new();
     let mut section_finalizes = Vec::new();
+    let mut section_patches = Vec::new();
 
     if let Data::Struct(data_struct) = &input.data {
         for entry in &data_struct.fields {
@@ -19,6 +21,7 @@ pub fn gen_unit_derives(input: DeriveInput) -> syn::Result<TokenStream> {
             section_inits.push(gen_section_init(&entry)?);
             section_parsers.push(gen_section_parse(&entry)?);
             section_finalizes.push(gen_section_finalize(&entry)?);
+            section_patches.push(gen_section_patches(&entry)?);
             let ident = entry.ident.as_ref().ok_or(Error::new_spanned(
                 &entry,
                 "An entry must have an explicit name.",
@@ -36,7 +39,7 @@ pub fn gen_unit_derives(input: DeriveInput) -> syn::Result<TokenStream> {
 
     let result = quote! {
          impl unit_parser::internal::UnitConfig for #ident {
-            fn __parse_unit(__source: unit_parser::internal::UnitParser) -> unit_parser::internal::Result<Self> {
+            fn __parse_unit(__source: unit_parser::internal::UnitParser, __from: Option<&Self>) -> unit_parser::internal::Result<Self> {
                 #( #section_ensures )*
                 #( #section_inits )*
                 for __section in __source {
@@ -48,10 +51,19 @@ pub fn gen_unit_derives(input: DeriveInput) -> syn::Result<TokenStream> {
                         }
                     }
                 }
-                #( #section_finalizes )*
-                Ok(Self {
-                    #( #sections ),*
-                })
+                match __from {
+                    None => {
+                        #( #section_finalizes )*
+                        Ok(Self {
+                            #( #sections ),*
+                        })
+                    }
+                    Some(__from_inner) => {
+                        let mut __from_clone = __from_inner.clone();
+                        #( #section_patches )*
+                        Ok(__from_clone)
+                    }
+                }
             }
         }
     };
