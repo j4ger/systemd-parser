@@ -4,23 +4,32 @@ use chrono::Duration;
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use unit_parser::prelude::*;
 
-#[derive(UnitConfig)]
+#[derive(UnitConfig, Clone)]
 struct Unit {
-    Sec1: Section,
+    Sec1: Option<Section>,
 }
 
-#[derive(UnitSection)]
+#[derive(UnitSection, Clone)]
 struct Section {
+    #[entry(must)]
     Str: String,
+
+    #[entry(must)]
     Int: u32,
+
+    #[entry(must)]
     Vec: Vec<u32>,
+
+    #[entry(must)]
     Dur: Duration,
+
+    #[entry(must)]
     Boo: bool,
 
-    #[entry(default = 1919810)]
+    #[entry(must, default = 1919810)]
     Def: u32,
 
-    #[entry(key = "Key")]
+    #[entry(must, key = "Key")]
     Alt: u32,
 }
 
