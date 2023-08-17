@@ -4,6 +4,7 @@ use chrono::Duration;
 use unit_parser::prelude::*;
 
 #[derive(UnitConfig, Debug, Clone)]
+#[unit(suffix = "unit")]
 pub struct Unit {
     // sections can be attributed with default to fallback to default when not present
     // trait `Default` is required to be implemented

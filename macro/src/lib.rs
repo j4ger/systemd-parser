@@ -10,7 +10,7 @@ mod transform_default;
 mod type_transform;
 mod unit;
 
-#[proc_macro_derive(UnitConfig, attributes(section))]
+#[proc_macro_derive(UnitConfig, attributes(unit, section))]
 pub fn derive_unit_config(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
 

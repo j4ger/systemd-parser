@@ -20,6 +20,7 @@ use std::{
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
 pub trait UnitConfig: Sized + Clone {
+    const SUFFIX: &'static str;
     fn __parse_unit(__source: UnitParser, __from: Option<&Self>) -> Result<Self>;
     fn load_from_string<S: AsRef<str>>(source: S) -> Result<Self> {
         let parser = crate::parser::UnitParser::new(source.as_ref())?;

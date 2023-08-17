@@ -94,3 +94,34 @@ impl EntryAttributes {
         Ok(result)
     }
 }
+
+pub(crate) struct UnitAttributes {
+    pub(crate) suffix: Option<LitStr>,
+}
+
+impl Default for UnitAttributes {
+    fn default() -> Self {
+        Self { suffix: None }
+    }
+}
+
+impl UnitAttributes {
+    pub(crate) fn parse_vec(input: &Vec<Attribute>) -> syn::Result<Self> {
+        let mut result = UnitAttributes::default();
+        for attribute in input {
+            if attribute.path().is_ident("unit") {
+                attribute.parse_nested_meta(|nested| {
+                    if nested.path.is_ident("suffix") {
+                        nested.input.parse::<Token![=]>()?;
+                        let value: LitStr = nested.input.parse()?;
+                        result.suffix = Some(value);
+                        Ok(())
+                    } else {
+                        Err(Error::new_spanned(attribute, "Not a valid attribute."))
+                    }
+                })?;
+            }
+        }
+        Ok(result)
+    }
+}
