@@ -8,8 +8,17 @@ type RuleError = pest::error::Error<Rule>;
 #[derive(Debug, Snafu)]
 #[snafu(visibility(pub))]
 pub enum Error {
+    #[snafu(display("{} is not a valid directory.", path))]
+    InvalidDirectoryError { path: String },
+
+    #[snafu(display("Failed to read directory {}: {}.", path, source))]
+    ReadDirectoryError { source: io::Error, path: String },
+
     #[snafu(display("Failed to read file {}: {}.", path, source))]
     ReadFileError { source: io::Error, path: String },
+
+    #[snafu(display("Failed to read directory entry: {}.", source))]
+    ReadEntryError { source: io::Error },
 
     #[snafu(display("Failed to parse input: {}.", source))]
     ParsingError { source: RuleError },

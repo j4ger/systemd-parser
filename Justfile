@@ -1,15 +1,15 @@
 expand:
-	cd lib && cargo expand --example example
+	cargo expand --example example
 
 dump:
 	cd syn/examples/dump-syntax && cargo run -- ../../../lib/examples/example.rs | bat
 
 example:
-	cd lib && cargo run --example example	
+	cargo run --example example	
 
-advanced:
-	cd lib && cargo run --example advanced
+dir:
+	cargo run --example directory
 
 patch:
-	cd lib && cargo run --example patch
+	cargo run --example patch
 

@@ -80,6 +80,6 @@ enum MyEnum {
 }
 
 fn main() {
-    let result = Unit::load("examples/example.unit", None).unwrap();
+    let result = Unit::load("lib/examples/example.unit", None).unwrap();
     println!("{:#?}", result);
 }

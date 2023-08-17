@@ -1,12 +1,12 @@
 use crate::{
-    error::ReadFileSnafu,
+    error::{InvalidDirectorySnafu, ReadDirectorySnafu, ReadEntrySnafu, ReadFileSnafu},
     internal::Error,
     parser::{SectionParser, UnitParser},
 };
-use snafu::ResultExt;
+use snafu::{ensure, ResultExt};
 use std::{
     ffi::OsString,
-    fs::File,
+    fs::{read_dir, File},
     io::Read,
     net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV4, SocketAddrV6},
     num::{
@@ -22,6 +22,33 @@ pub type Result<T, E = Error> = std::result::Result<T, E>;
 pub trait UnitConfig: Sized + Clone {
     const SUFFIX: &'static str;
 
+    fn load_dir<S: AsRef<Path>>(path: S) -> Result<Vec<Self>> {
+        let path = path.as_ref();
+        ensure!(
+            path.is_dir(),
+            InvalidDirectorySnafu {
+                path: path.to_string_lossy().to_string()
+            }
+        );
+
+        let mut result = Vec::new();
+
+        for file in read_dir(path).context(ReadDirectorySnafu {
+            path: path.to_string_lossy().to_string(),
+        })? {
+            let file = file.context(ReadEntrySnafu {})?;
+            if file.file_type().context(ReadEntrySnafu {})?.is_dir() {
+                let inner = Self::load_dir(file.path())?;
+                result.extend_from_slice(&inner);
+            } else {
+                let parse = Self::load(file.path(), None)?;
+                result.push(parse);
+            }
+        }
+
+        Ok(result)
+    }
+
     fn __parse_unit(__source: UnitParser, __from: Option<&Self>) -> Result<Self>;
 
     fn load_from_string<S: AsRef<str>>(source: S, from: Option<&Self>) -> Result<Self> {
@@ -29,8 +56,8 @@ pub trait UnitConfig: Sized + Clone {
         Self::__parse_unit(parser, from)
     }
 
-    fn load<S: AsRef<str>>(__path: S, from: Option<&Self>) -> Result<Self> {
-        let path = Path::new(__path.as_ref());
+    fn load<S: AsRef<Path>>(path: S, from: Option<&Self>) -> Result<Self> {
+        let path = path.as_ref();
         let mut file = File::open(path).context(ReadFileSnafu {
             path: path.to_string_lossy().to_string(),
         })?;

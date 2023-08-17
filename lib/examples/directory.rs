@@ -18,9 +18,7 @@ struct Section {
 }
 
 fn main() {
-    let base = Unit::load("lib/examples/base.unit", None).unwrap();
-    let patch = Unit::load("lib/examples/patch.unit", Some(&base)).unwrap();
+    let result = Unit::load_dir("lib/examples/units").unwrap();
 
-    println!("base: {:#?}", base);
-    println!("patch: {:#?}", patch);
+    println!("result: {:#?}", result);
 }
