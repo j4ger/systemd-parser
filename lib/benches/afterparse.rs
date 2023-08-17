@@ -45,7 +45,7 @@ Key=114514
 
 pub fn criterion_benchmark(c: &mut Criterion) {
     c.bench_function("parse string into struct", |b| {
-        b.iter(|| Unit::load_from_string(black_box(SOURCE)))
+        b.iter(|| Unit::load_from_string(black_box(SOURCE), None))
     });
 }
 

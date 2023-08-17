@@ -10,3 +10,6 @@ example:
 advanced:
 	cd lib && cargo run --example advanced
 
+patch:
+	cd lib && cargo run --example patch
+

@@ -21,12 +21,15 @@ pub type Result<T, E = Error> = std::result::Result<T, E>;
 
 pub trait UnitConfig: Sized + Clone {
     const SUFFIX: &'static str;
+
     fn __parse_unit(__source: UnitParser, __from: Option<&Self>) -> Result<Self>;
-    fn load_from_string<S: AsRef<str>>(source: S) -> Result<Self> {
+
+    fn load_from_string<S: AsRef<str>>(source: S, from: Option<&Self>) -> Result<Self> {
         let parser = crate::parser::UnitParser::new(source.as_ref())?;
-        Self::__parse_unit(parser, None)
+        Self::__parse_unit(parser, from)
     }
-    fn load<S: AsRef<str>>(__path: S) -> Result<Self> {
+
+    fn load<S: AsRef<str>>(__path: S, from: Option<&Self>) -> Result<Self> {
         let path = Path::new(__path.as_ref());
         let mut file = File::open(path).context(ReadFileSnafu {
             path: path.to_string_lossy().to_string(),
@@ -35,7 +38,7 @@ pub trait UnitConfig: Sized + Clone {
         file.read_to_string(&mut content).context(ReadFileSnafu {
             path: path.to_string_lossy().to_string(),
         })?;
-        Self::load_from_string(content)
+        Self::load_from_string(content, from)
     }
 }
 
