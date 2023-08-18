@@ -5,6 +5,8 @@ use std::io;
 
 type RuleError = pest::error::Error<Rule>;
 
+// TODO: change errors to `log::warn`s to prevent one bad file from stalling the entire loading process
+
 #[derive(Debug, Snafu)]
 #[snafu(visibility(pub))]
 pub enum Error {
@@ -19,6 +21,12 @@ pub enum Error {
 
     #[snafu(display("Failed to read directory entry: {}.", source))]
     ReadEntryError { source: io::Error },
+
+    #[snafu(display("Unable to read filename for {}.", path))]
+    FilenameUnreadable { path: String },
+
+    #[snafu(display("Invalid filename {}.", filename))]
+    InvalidFilenameError { filename: String },
 
     #[snafu(display("Failed to parse input: {}.", source))]
     ParsingError { source: RuleError },

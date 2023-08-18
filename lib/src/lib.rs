@@ -1,6 +1,7 @@
 mod config;
 mod error;
 mod parser;
+mod template;
 
 mod datetime;
 mod duration;

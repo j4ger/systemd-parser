@@ -1,3 +1,4 @@
+
 #![allow(non_snake_case, dead_code)]
 
 use unit_parser::prelude::*;
@@ -12,14 +13,14 @@ struct Unit {
 #[derive(UnitSection, Debug, Clone)]
 struct Section {
     #[entry(must)]
-    Field1: u32,
+    Name: String,
 
     #[entry(must)]
-    Field2: u32,
+    Description: String,
 }
 
 fn main() {
-    let result = Unit::load_dir("lib/examples/units").unwrap();
+    let result = Unit::load_dir("lib/examples/templates").unwrap();
 
     println!("result: {:#?}", result);
 }

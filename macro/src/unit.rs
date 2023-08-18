@@ -43,7 +43,7 @@ pub fn gen_unit_derives(input: DeriveInput) -> syn::Result<TokenStream> {
 
     let suffix = attributes
         .suffix
-        .map_or("\"\"".to_token_stream(), |x| x.to_token_stream());
+        .map_or(quote! {""}, |x| x.to_token_stream());
 
     let result = quote! {
          impl unit_parser::internal::UnitConfig for #ident {

@@ -1,10 +1,15 @@
 use crate::{
-    error::{InvalidDirectorySnafu, ReadDirectorySnafu, ReadEntrySnafu, ReadFileSnafu},
+    error::{
+        FilenameUnreadableSnafu, InvalidDirectorySnafu, ReadDirectorySnafu, ReadEntrySnafu,
+        ReadFileSnafu,
+    },
     internal::Error,
     parser::{SectionParser, UnitParser},
+    template::{unit_type, UnitType},
 };
-use snafu::{ensure, ResultExt};
+use snafu::{ensure, OptionExt, ResultExt};
 use std::{
+    collections::HashMap,
     ffi::OsString,
     fs::{read_dir, File},
     io::Read,
@@ -23,30 +28,105 @@ pub trait UnitConfig: Sized + Clone {
     const SUFFIX: &'static str;
 
     fn load_dir<S: AsRef<Path>>(path: S) -> Result<Vec<Self>> {
-        let path = path.as_ref();
-        ensure!(
-            path.is_dir(),
-            InvalidDirectorySnafu {
-                path: path.to_string_lossy().to_string()
-            }
-        );
+        let mut templates = HashMap::new();
+        let mut instances = HashMap::new();
+        let mut results = Vec::new();
 
-        let mut result = Vec::new();
+        Self::load_dir_sub(path, &mut templates, &mut instances, &mut results)?;
 
-        for file in read_dir(path).context(ReadDirectorySnafu {
-            path: path.to_string_lossy().to_string(),
-        })? {
-            let file = file.context(ReadEntrySnafu {})?;
-            if file.file_type().context(ReadEntrySnafu {})?.is_dir() {
-                let inner = Self::load_dir(file.path())?;
-                result.extend_from_slice(&inner);
-            } else {
-                let parse = Self::load(file.path(), None)?;
-                result.push(parse);
+        for (template_name, instance_names) in instances.iter() {
+            match templates.get(template_name) {
+                Some(template) => {
+                    for instance_name in instance_names {
+                        let patched = template.replace("%i", instance_name);
+                        let parse = Self::load_from_string(patched, None)?;
+                        results.push(parse);
+                    }
+                }
+                None => {
+                    log::warn!("Template {} is not found.", template_name);
+                }
             }
         }
 
-        Ok(result)
+        Ok(results)
+    }
+
+    fn load_dir_sub<S: AsRef<Path>>(
+        path: S,
+        templates: &mut HashMap<String, String>,
+        instances: &mut HashMap<String, Vec<String>>,
+        results: &mut Vec<Self>,
+    ) -> Result<()> {
+        let path = path.as_ref();
+        let path_str = path.to_string_lossy().to_string();
+        ensure!(
+            path.is_dir(),
+            InvalidDirectorySnafu {
+                path: path_str.to_owned()
+            }
+        );
+
+        for file in read_dir(path).context(ReadDirectorySnafu {
+            path: path_str.to_owned(),
+        })? {
+            let file = file.context(ReadEntrySnafu {})?;
+            if file.file_type().context(ReadEntrySnafu {})?.is_dir() {
+                Self::load_dir_sub(file.path(), templates, instances, results)?;
+            } else {
+                let filename = file.file_name();
+                let filename = filename
+                    .to_str()
+                    .context(FilenameUnreadableSnafu {
+                        path: path_str.to_owned(),
+                    })?
+                    .to_string();
+                if Self::SUFFIX != "" {
+                    if let Some(extension) = file.path().extension() {
+                        if let Some(extension) = extension.to_str() {
+                            if extension != Self::SUFFIX {
+                                continue;
+                            }
+                        } else {
+                            continue;
+                        }
+                    } else {
+                        continue;
+                    }
+                }
+                match unit_type(filename.as_str())? {
+                    UnitType::Regular(_) => {
+                        let parse = Self::load(file.path(), None)?;
+                        results.push(parse);
+                    }
+                    UnitType::Template(template_name) => {
+                        let template_name = template_name.to_owned();
+                        let mut handle = File::open(file.path()).context(ReadFileSnafu {
+                            path: path_str.to_owned(),
+                        })?;
+                        let mut content = String::new();
+                        handle.read_to_string(&mut content).context(ReadFileSnafu {
+                            path: path_str.to_owned(),
+                        })?;
+
+                        templates.insert(template_name, content);
+                    }
+                    UnitType::Instance(instance_name, template_name) => {
+                        let template_name = template_name.to_owned();
+                        match instances.get_mut(template_name.as_str()) {
+                            Some(current) => {
+                                current.push(instance_name.to_string());
+                            }
+                            None => {
+                                instances.insert(template_name, vec![instance_name.to_string()]);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(())
     }
 
     fn __parse_unit(__source: UnitParser, __from: Option<&Self>) -> Result<Self>;
