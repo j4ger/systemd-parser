@@ -10,8 +10,8 @@ example:
 dir:
 	cargo run --example directory
 
-patch:
-	cargo run --example patch
+template:
+	cargo run --example template
 
 dropin:
 	cargo run --example dropins
