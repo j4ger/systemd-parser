@@ -11,7 +11,6 @@ use snafu::{ensure, OptionExt, ResultExt};
 use std::{
     collections::HashMap,
     ffi::OsString,
-    fmt::Debug,
     fs::{read_dir, File},
     io::Read,
     net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV4, SocketAddrV6},
@@ -25,8 +24,7 @@ use std::{
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
-// TODO: remove Debug
-pub trait UnitConfig: Sized + Clone + Debug {
+pub trait UnitConfig: Sized + Clone {
     const SUFFIX: &'static str;
 
     fn load_dir<S: AsRef<Path>>(path: S) -> Result<Vec<(String, Self)>> {
@@ -215,18 +213,14 @@ pub trait UnitConfig: Sized + Clone + Debug {
     }
 }
 
-// TODO: remove Debug
-pub trait UnitSection: Sized + Clone + Debug {
+pub trait UnitSection: Sized + Clone {
     fn __parse_section(__source: SectionParser, __from: Option<Self>) -> Result<Option<Self>>;
 }
 
-// TODO: remove Debug
-pub trait UnitEntry: Sized + Clone + Debug {
+pub trait UnitEntry: Sized + Clone {
     type Error;
     fn parse_from_str<S: AsRef<str>>(input: S) -> std::result::Result<Self, Self::Error>;
 }
-
-pub trait EntryInner {}
 
 macro_rules! impl_for_types {
     ($typ:ty) => {
@@ -238,8 +232,6 @@ macro_rules! impl_for_types {
                 Self::from_str(input.as_ref())
             }
         }
-
-        impl EntryInner for $typ {}
     };
     ($x:ty, $($y:ty),+) => {
         impl_for_types!($x);
@@ -294,16 +286,5 @@ impl UnitEntry for bool {
             "0" | "no" | "false" | "off" => Ok(false),
             _ => Err(()),
         }
-    }
-}
-
-impl<T: UnitEntry + EntryInner> UnitEntry for Vec<T> {
-    type Error = <T as UnitEntry>::Error;
-    fn parse_from_str<S: AsRef<str>>(input: S) -> std::result::Result<Self, Self::Error> {
-        let mut result = Vec::new();
-        for value in input.as_ref().split_ascii_whitespace() {
-            result.push(T::parse_from_str(value)?);
-        }
-        Ok(result)
     }
 }

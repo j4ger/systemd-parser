@@ -59,12 +59,14 @@ pub(crate) fn gen_entry_parse(field: &Field) -> Result<TokenStream> {
                         #name.clear();
                         continue;
                     }
-                    match unit_parser::internal::UnitEntry::parse_from_str(__pair.1.as_str()){
-                        Ok(__inner) => {
-                            #name.push(__inner);
-                        }
-                        Err(_) => {
-                            log::warn!("Failed to parse {} for key {}, ignoring.", __pair.0, __pair.1);
+                    for part in __pair.1.split_ascii_whitespace(){
+                        match unit_parser::internal::UnitEntry::parse_from_str(part){
+                            Ok(__inner) => {
+                                #name.push(__inner);
+                            }
+                            Err(_) => {
+                                log::warn!("Failed to parse {} for key {}, ignoring.", __pair.0, __pair.1);
+                            }
                         }
                     }
                 }
@@ -194,8 +196,6 @@ pub(crate) fn gen_entry_derives(input: DeriveInput) -> Result<TokenStream> {
                     }
                 }
             }
-
-            impl unit_parser::internal::EntryInner for #ident {}
         })
     } else {
         Err(Error::new_spanned(

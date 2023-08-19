@@ -42,10 +42,6 @@ pub struct AdvancedSection {
     #[entry(must)]
     Private: String,
 
-    /// a vector config field
-    #[entry(must)]
-    Vector: Vec<String>,
-
     /// a config field with values within an enum
     #[entry(must)]
     Enum: MyEnum,
