@@ -13,3 +13,6 @@ dir:
 patch:
 	cargo run --example patch
 
+dropin:
+	cargo run --example dropins
+
