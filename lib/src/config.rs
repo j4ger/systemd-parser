@@ -27,19 +27,21 @@ pub type Result<T, E = Error> = std::result::Result<T, E>;
 pub trait UnitConfig: Sized + Clone {
     const SUFFIX: &'static str;
 
-    fn load_dir<S: AsRef<Path>>(path: S) -> Result<Vec<(String, Self)>> {
+    fn load_dir<S: AsRef<Path>>(paths: Vec<S>) -> Result<Vec<(String, Self)>> {
         let mut templates = HashMap::new();
         let mut instances = HashMap::new();
         let mut dropins = HashMap::new();
         let mut results = Vec::new();
 
-        Self::load_dir_sub(
-            path,
-            &mut templates,
-            &mut instances,
-            &mut dropins,
-            &mut results,
-        )?;
+        for path in paths {
+            Self::load_dir_sub(
+                path,
+                &mut templates,
+                &mut instances,
+                &mut dropins,
+                &mut results,
+            )?;
+        }
 
         for (template_name, instance_names) in instances.iter() {
             match templates.get(template_name) {
@@ -58,8 +60,6 @@ pub trait UnitConfig: Sized + Clone {
                 }
             }
         }
-
-        dbg!(&dropins);
 
         for result in results.iter_mut() {
             let segments: Vec<&str> = result.0.split("-").collect();

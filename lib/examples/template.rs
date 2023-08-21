@@ -1,4 +1,3 @@
-
 #![allow(non_snake_case, dead_code)]
 
 use unit_parser::prelude::*;
@@ -20,7 +19,7 @@ struct Section {
 }
 
 fn main() {
-    let result = Unit::load_dir("lib/examples/templates").unwrap();
+    let result = Unit::load_dir(vec!["lib/examples/templates"]).unwrap();
 
     println!("result: {:#?}", result);
 }

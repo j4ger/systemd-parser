@@ -19,7 +19,7 @@ struct Section {
 }
 
 fn main() {
-    let result = Unit::load_dir("lib/examples/units").unwrap();
+    let result = Unit::load_dir(vec!["lib/examples/units"]).unwrap();
 
     println!("result: {:#?}", result);
 }

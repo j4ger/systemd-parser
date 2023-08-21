@@ -18,9 +18,6 @@ struct Section {
     Int: u32,
 
     #[entry(must)]
-    Vec: Vec<u32>,
-
-    #[entry(must)]
     Dur: Duration,
 
     #[entry(must)]

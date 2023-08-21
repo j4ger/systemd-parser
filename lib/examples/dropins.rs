@@ -22,7 +22,7 @@ struct Section {
 }
 
 fn main() {
-    let result = Unit::load_dir("lib/examples/dropins").unwrap();
+    let result = Unit::load_dir(vec!["lib/examples/dropins"]).unwrap();
 
     println!("result: {:#?}", result);
 }
