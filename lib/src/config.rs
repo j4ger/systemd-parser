@@ -47,6 +47,7 @@ pub trait UnitConfig: Sized + Clone {
             match templates.get(template_name) {
                 Some(template) => {
                     for instance_name in instance_names {
+                        // advanced specifiers patching
                         let patched = template.replace("%i", instance_name);
                         let parse = Self::load_from_string(patched, None)?;
                         results.push((
@@ -63,6 +64,14 @@ pub trait UnitConfig: Sized + Clone {
 
         for result in results.iter_mut() {
             let segments: Vec<&str> = result.0.split("-").collect();
+            if let Some(drop_in_vec) = dropins.get_mut(format!("{}.d", Self::SUFFIX).as_str()) {
+                drop_in_vec.sort_unstable_by(|x, y| x.0.cmp(&y.1));
+                let mut res = result.1.clone();
+                for drop_in in drop_in_vec {
+                    res = Self::load_from_string(drop_in.1.to_owned(), Some(&res))?;
+                }
+                result.1 = res;
+            }
             if let Some(drop_in_vec) = dropins.get_mut(result.0.as_str()) {
                 drop_in_vec.sort_unstable_by(|x, y| x.0.cmp(&y.1));
                 let mut res = result.1.clone();

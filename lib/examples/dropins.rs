@@ -19,6 +19,9 @@ struct Section {
 
     #[entry(must)]
     Field3: u32,
+
+    #[entry(must)]
+    Field4: u32,
 }
 
 fn main() {
