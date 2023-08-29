@@ -2,6 +2,7 @@ mod config;
 mod error;
 mod escape;
 mod parser;
+mod specifiers;
 mod template;
 
 mod datetime;

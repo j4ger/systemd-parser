@@ -6,11 +6,95 @@ identifier = _{ XID_START ~ XID_CONTINUE* }
 section_header = { identifier }
 
 key = { identifier }
-value_line = @{ (!(NEWLINE | "\\\n" ) ~ ANY)* }
+value_line = { (!(NEWLINE | "\\\n") ~ (("%" ~ specifier) | ( !"%" ~ ANY)))* }
 value = { ( value_line ~ "\\\n")* ~ value_line }
 
 entry = { key ~ "=" ~ value ~ NEWLINE+ }
 
 section = { "[" ~ section_header ~ "]" ~ NEWLINE ~ entry+ }
 
-unit_file = { SOI ~ section + ~ EOI }
+unit_file = { SOI ~ NEWLINE* ~ section + ~ EOI }
+
+specifier = @{
+	escape_percentage |
+	architecture |
+	os_image_version |
+	boot_id |
+	os_build_id |
+	cache_root |
+	credentials_dir |
+	config_root |
+	unescaped_filename |
+	user_group |
+	user_gid |
+	user_home |
+	host_name |
+	host_name |
+	instance_name |
+	unescaped_instance_name |
+	final_prefix_component |
+	unescaped_final_prefix_component |
+	short_host_name |
+	log_root |
+	machine_id |
+	os_image_id |
+	full_unit_name |
+	full_unit_name_without_suffix |
+	os_id |
+	prefix |
+	unescaped_prefix |
+	pretty_host_name |
+	shell |
+	state_root |
+	runtime_root |
+	temp_root |
+	user_name |
+	user_uid |
+	kernel_release |
+	persist_temp_dir |
+	os_variant_id |
+	os_version_id |
+	fragment_dir |
+	fragment_path
+}
+
+escape_percentage = { "%" }
+architecture = { "a" }
+os_image_version = { "A" }
+boot_id = { "b" }
+os_build_id = { "B" }
+cache_root = { "C" }
+credentials_dir = { "d" }
+config_root = { "E" }
+unescaped_filename = { "f" }
+user_group = { "g" }
+user_gid= { "G" }
+user_home = { "h" }
+host_name = { "H" }
+instance_name = { "i" }
+unescaped_instance_name = { "I" }
+final_prefix_component = { "j" }
+unescaped_final_prefix_component = { "j" }
+short_host_name = { "l" }
+log_root= { "L" }
+machine_id = { "g" }
+os_image_id = { "M" }
+full_unit_name = { "n" }
+full_unit_name_without_suffix = { "N" }
+os_id = { "o" }
+prefix = { "p" }
+unescaped_prefix= { "P" }
+pretty_host_name = { "q" }
+shell = { "s" }
+state_root = { "S" }
+runtime_root = { "t" }
+temp_root = { "T" }
+user_name = { "u" }
+user_uid = { "U" }
+kernel_release = { "v" }
+persist_temp_dir = { "V" }
+os_version_id = { "w" }
+os_variant_id = { "W" }
+fragment_path = { "y" }
+fragment_dir = { "g" }
+
