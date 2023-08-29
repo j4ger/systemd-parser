@@ -16,6 +16,9 @@ pub enum Error {
     #[snafu(display("Failed to read directory {}: {}.", path, source))]
     ReadDirectoryError { source: io::Error, path: String },
 
+    #[snafu(display("{} is not a file.", path))]
+    NotAFileError { path: String },
+
     #[snafu(display("Failed to read file {}: {}.", path, source))]
     ReadFileError { source: io::Error, path: String },
 

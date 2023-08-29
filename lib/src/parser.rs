@@ -1,4 +1,10 @@
-use crate::{config::Result, error::*};
+use std::{path::Path, rc::Rc};
+
+use crate::{
+    config::Result,
+    error::*,
+    specifiers::{resolve, SpecifierContext},
+};
 use pest::{iterators::Pairs, Parser};
 use pest_derive::Parser;
 use snafu::ResultExt;
@@ -8,16 +14,29 @@ use snafu::ResultExt;
 pub struct UnitFileParser;
 
 pub struct UnitParser<'a> {
+    context: Rc<SpecifierContext>,
+    filename: &'a str,
+    path: &'a Path,
     inner: Pairs<'a, Rule>,
 }
 
 impl<'a> UnitParser<'a> {
-    pub(crate) fn new(input: &'a str) -> Result<Self> {
+    pub(crate) fn new(
+        input: &'a str,
+        context: Rc<SpecifierContext>,
+        filename: &'a str,
+        path: &'a Path,
+    ) -> Result<Self> {
         let mut parse =
             UnitFileParser::parse(Rule::unit_file, input.as_ref()).context(ParsingSnafu {})?;
         // should never fail since rule unit_file restricts SOI and EOI
         let sections = parse.next().unwrap().into_inner();
-        Ok(Self { inner: sections })
+        Ok(Self {
+            inner: sections,
+            filename,
+            path,
+            context,
+        })
     }
 }
 
@@ -49,9 +68,14 @@ impl<'a> Iterator for UnitParser<'a> {
 
         let section_name = first_item.as_str();
 
+        let context = Rc::clone(&self.context);
+
         Some(Ok(SectionParser {
             name: section_name,
             inner,
+            context,
+            path: self.path,
+            filename: self.filename,
         }))
     }
 }
@@ -59,6 +83,9 @@ impl<'a> Iterator for UnitParser<'a> {
 pub struct SectionParser<'a> {
     pub name: &'a str,
     inner: Pairs<'a, Rule>,
+    filename: &'a str,
+    path: &'a Path,
+    context: Rc<SpecifierContext>,
 }
 
 impl<'a> Iterator for SectionParser<'a> {
@@ -92,9 +119,21 @@ impl<'a> Iterator for SectionParser<'a> {
             }
 
             let mut value = String::new();
-            for line in values.into_inner() {
-                let partial = line.as_str().trim_end_matches("\\\n");
-                value.push_str(partial);
+            for item in values.into_inner() {
+                if item.as_rule() == Rule::value_block {
+                    value.push_str(item.as_str());
+                } else {
+                    value.push_str(
+                        resolve(
+                            item.as_str().chars().nth(0).unwrap(),
+                            self.context.as_ref(),
+                            self.filename,
+                            self.path,
+                        )
+                        .unwrap_or("".to_string())
+                        .as_str(),
+                    );
+                }
             }
 
             return Some(Ok((key, value)));
