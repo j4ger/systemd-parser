@@ -19,7 +19,8 @@ struct Section {
 }
 
 fn main() {
-    let result = Unit::load_dir(vec!["lib/examples/templates"]).unwrap();
+    let result =
+        Unit::load_named(vec!["lib/examples/templates"], "myunit@template", false).unwrap();
 
     println!("result: {:#?}", result);
 }

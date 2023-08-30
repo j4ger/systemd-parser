@@ -1,14 +1,9 @@
-use snafu::OptionExt;
-
-use crate::{
-    config::Result,
-    error::{Error, InvalidFilenameSnafu},
-};
+use crate::{config::Result, error::Error};
 
 pub(crate) enum UnitType<'a> {
-    Template(&'a str),          // template name
-    Instance(&'a str, &'a str), // instance name, template filename
-    Regular(&'a str),           // unit name
+    Template(&'a str),         // template name
+    Instance(&'a str, String), // instance name, template file name
+    Regular(&'a str),          // unit name
 }
 
 pub(crate) fn unit_type<'a>(filename: &'a str) -> Result<UnitType<'a>> {
@@ -19,8 +14,13 @@ pub(crate) fn unit_type<'a>(filename: &'a str) -> Result<UnitType<'a>> {
             if split.get(1).unwrap().starts_with('.') {
                 Ok(UnitType::Template(split.get(0).unwrap()))
             } else {
-                let template_name = split.get(1).unwrap();
-                Ok(UnitType::Instance(split.get(0).unwrap(), template_name))
+                let mut sub_split = split.get(1).unwrap().split('.');
+                let template_name = sub_split.nth(0).unwrap();
+                let suffix = sub_split.last().unwrap();
+                Ok(UnitType::Instance(
+                    split.get(0).unwrap(),
+                    format!("{}@.{}", template_name, suffix),
+                ))
             }
         }
         _ => Err(Error::InvalidFilenameError {

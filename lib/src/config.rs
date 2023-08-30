@@ -253,7 +253,7 @@ pub trait UnitConfig: Sized + Clone {
                 });
             }
             UnitType::Instance(_, template_filename) => template_filename,
-            UnitType::Regular(_) => fullname.as_str(),
+            UnitType::Regular(_) => fullname.to_owned(),
         };
         let mut result = None;
 
@@ -261,7 +261,7 @@ pub trait UnitConfig: Sized + Clone {
         for dir in paths.iter() {
             let dir = dir.as_ref();
             let mut path = dir.to_owned();
-            path.push(actual_file_name);
+            path.push(actual_file_name.as_str());
             if let Ok(res) = Self::__load(path, fullname.as_str(), None, root) {
                 result = Some(res);
                 break;
