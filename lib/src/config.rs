@@ -276,7 +276,7 @@ pub trait UnitConfig: Sized + Clone {
         let segments: Vec<&str> = fullname.split('-').collect();
         for i in (1..segments.len()).rev() {
             let segmented = segments[0..i].join("-");
-            let dir_name = format!("{}-.{}", segmented, Self::SUFFIX);
+            let dir_name = format!("{}-.{}.d", segmented, Self::SUFFIX);
             dropin_dir_names.push(dir_name);
         }
 

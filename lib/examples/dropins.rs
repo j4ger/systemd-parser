@@ -25,7 +25,7 @@ struct Section {
 }
 
 fn main() {
-    let result = Unit::load_dir(vec!["lib/examples/dropins"]).unwrap();
+    let result = Unit::load_named(vec!["lib/examples/dropins"], "foo-bar-baz", false).unwrap();
 
     println!("result: {:#?}", result);
 }
