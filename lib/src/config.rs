@@ -1,16 +1,12 @@
 use crate::{
-    error::{
-        FilenameUnreadableSnafu, InvalidDirectorySnafu, InvalidFilenameSnafu, NotAFileSnafu,
-        ReadDirectorySnafu, ReadEntrySnafu, ReadFileSnafu,
-    },
+    error::ReadFileSnafu,
     internal::Error,
     parser::{SectionParser, UnitParser},
     specifiers::SpecifierContext,
     template::{unit_type, UnitType},
 };
-use snafu::{ensure, OptionExt, ResultExt};
+use snafu::ResultExt;
 use std::{
-    collections::HashMap,
     ffi::OsString,
     fs::{read_dir, File},
     io::Read,
@@ -206,16 +202,14 @@ pub trait UnitConfig: Sized + Clone {
 
     fn __parse_unit(__source: UnitParser, __from: Option<&Self>) -> Result<Self>;
 
-    fn __load<S: AsRef<Path>>(path: S, from: Option<&Self>, root: bool) -> Result<Self> {
+    fn __load<S: AsRef<Path>>(
+        path: S,
+        filename: &str,
+        from: Option<&Self>,
+        root: bool,
+    ) -> Result<Self> {
         let context = SpecifierContext::new(root);
         let path = path.as_ref();
-        let filename = path
-            .file_name()
-            .context(NotAFileSnafu {
-                path: path.to_string_lossy().to_string(),
-            })?
-            .to_string_lossy()
-            .to_string();
         let mut file = File::open(path).context(ReadFileSnafu {
             path: path.to_string_lossy().to_string(),
         })?;
@@ -223,17 +217,102 @@ pub trait UnitConfig: Sized + Clone {
         file.read_to_string(&mut content).context(ReadFileSnafu {
             path: path.to_string_lossy().to_string(),
         })?;
-        let parser = crate::parser::UnitParser::new(
-            content.as_ref(),
-            Rc::new(context),
-            filename.as_str(),
-            path,
-        )?;
+        let parser =
+            crate::parser::UnitParser::new(content.as_ref(), Rc::new(context), filename, path)?;
         Self::__parse_unit(parser, from)
     }
 
     fn load<S: AsRef<Path>>(path: S, root: bool) -> Result<Self> {
-        Self::__load(path, None, root)
+        let path = path.as_ref();
+        Self::__load(
+            path,
+            path.file_name()
+                .map_or("".to_string(), |x| x.to_string_lossy().to_string())
+                .as_str(),
+            None,
+            root,
+        )
+    }
+
+    fn load_named<S: AsRef<str>, P: AsRef<Path>>(
+        paths: Vec<P>,
+        name: S,
+        root: bool,
+    ) -> Result<Self> {
+        // return when first one is found?
+        let name = name.as_ref();
+        let fullname = if name.ends_with(Self::SUFFIX) {
+            name.to_string()
+        } else {
+            format!("{}.{}", name, Self::SUFFIX)
+        };
+        let actual_file_name = match unit_type(fullname.as_str())? {
+            UnitType::Template(_) => {
+                return Err(Error::LoadTemplateError {
+                    name: fullname.to_owned(),
+                });
+            }
+            UnitType::Instance(_, template_filename) => template_filename,
+            UnitType::Regular(_) => fullname.as_str(),
+        };
+        let mut result = None;
+
+        // load itself
+        for dir in paths.iter() {
+            let dir = dir.as_ref();
+            let mut path = dir.to_owned();
+            path.push(actual_file_name);
+            if let Ok(res) = Self::__load(path, fullname.as_str(), None, root) {
+                result = Some(res);
+                break;
+            }
+        }
+
+        // load drop-ins
+        let mut dropin_dir_names = vec![
+            format!("{}.d", Self::SUFFIX),
+            format!("{}.d", fullname.as_str()),
+        ];
+        let segments: Vec<&str> = fullname.split('-').collect();
+        for i in (1..segments.len()).rev() {
+            let segmented = segments[0..i].join("-");
+            let dir_name = format!("{}-.{}", segmented, Self::SUFFIX);
+            dropin_dir_names.push(dir_name);
+        }
+
+        for dir_name in dropin_dir_names.iter() {
+            for dir in paths.iter() {
+                let dir = dir.as_ref();
+                let mut path = dir.to_owned();
+                path.push(dir_name.as_str());
+                if path.is_dir() {
+                    if let Ok(dir_entries) = read_dir(&path) {
+                        for item in dir_entries {
+                            if let Ok(entry) = item {
+                                if let Ok(meta) = entry.metadata() {
+                                    if meta.is_file()
+                                        && entry.path().extension().is_some_and(|x| x == "conf")
+                                    {
+                                        if let Ok(res) = Self::__load(
+                                            entry.path(),
+                                            fullname.as_str(),
+                                            result.as_ref(),
+                                            root,
+                                        ) {
+                                            result = Some(res);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        result.ok_or(Error::NoUnitFoundError {
+            name: name.to_string(),
+        })
     }
 }
 

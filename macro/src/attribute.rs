@@ -50,6 +50,7 @@ pub(crate) struct EntryAttributes {
     pub(crate) key: Option<TokenStream>,
     pub(crate) multiple: bool,
     pub(crate) must: bool,
+    pub(crate) subdir: Option<TokenStream>,
 }
 
 impl Default for EntryAttributes {
@@ -59,6 +60,7 @@ impl Default for EntryAttributes {
             key: None,
             multiple: false,
             must: false,
+            subdir: None,
         }
     }
 }
@@ -84,6 +86,12 @@ impl EntryAttributes {
                         Ok(())
                     } else if nested.path.is_ident("must") {
                         result.must = true;
+                        Ok(())
+                    } else if nested.path.is_ident("subdir") {
+                        unimplemented!();
+                        nested.input.parse::<Token![=]>()?;
+                        let value: LitStr = nested.input.parse()?;
+                        result.subdir = Some(value.into_token_stream());
                         Ok(())
                     } else {
                         Err(Error::new_spanned(attribute, "Not a valid attribute."))

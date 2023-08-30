@@ -7,7 +7,7 @@ use crate::{
 
 pub(crate) enum UnitType<'a> {
     Template(&'a str),          // template name
-    Instance(&'a str, &'a str), // instance name, template name
+    Instance(&'a str, &'a str), // instance name, template filename
     Regular(&'a str),           // unit name
 }
 
@@ -19,15 +19,7 @@ pub(crate) fn unit_type<'a>(filename: &'a str) -> Result<UnitType<'a>> {
             if split.get(1).unwrap().starts_with('.') {
                 Ok(UnitType::Template(split.get(0).unwrap()))
             } else {
-                let template_name =
-                    split
-                        .get(1)
-                        .unwrap()
-                        .split(".")
-                        .nth(0)
-                        .context(InvalidFilenameSnafu {
-                            filename: filename.to_string(),
-                        })?;
+                let template_name = split.get(1).unwrap();
                 Ok(UnitType::Instance(split.get(0).unwrap(), template_name))
             }
         }

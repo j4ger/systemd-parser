@@ -16,6 +16,9 @@ pub enum Error {
     #[snafu(display("Failed to read directory {}: {}.", path, source))]
     ReadDirectoryError { source: io::Error, path: String },
 
+    #[snafu(display("Cannot load a template unit: {}.", name))]
+    LoadTemplateError { name: String },
+
     #[snafu(display("{} is not a file.", path))]
     NotAFileError { path: String },
 
@@ -63,4 +66,7 @@ pub enum Error {
 
     #[snafu(display("Failed to parse {} as the value of entry with key {}.", value, key))]
     ValueParsingError { key: String, value: String },
+
+    #[snafu(display("Failed to find unit {}.", name))]
+    NoUnitFoundError { name: String },
 }

@@ -7,9 +7,6 @@ dump:
 example:
 	cargo run --example example	
 
-dir:
-	cargo run --example directory
-
 template:
 	cargo run --example template
 
