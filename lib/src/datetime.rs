@@ -1,6 +1,11 @@
-use chrono::Utc;
-
 use crate::config::UnitEntry;
+use chrono::Utc;
+use pest::Parser;
+use pest_derive::Parser;
+
+#[derive(Parser)]
+#[grammar = "datetime.pest"]
+pub(crate) struct DatetimeParser {}
 
 impl UnitEntry for chrono::DateTime<Utc> {
     type Error = ();

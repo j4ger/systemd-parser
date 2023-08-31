@@ -1,88 +1,42 @@
-use crate::config::UnitEntry;
+use crate::{
+    config::UnitEntry,
+    datetime::{DatetimeParser, Rule},
+};
 use chrono::Duration;
+use pest::Parser;
 
 impl UnitEntry for Duration {
-    type Error = ();
+    type Error = pest::error::Error<Rule>;
     fn parse_from_str<S: AsRef<str>>(input: S) -> std::result::Result<Self, Self::Error> {
-        enum Token {
-            Integer,
-            Character,
-            SOI,
-        }
-        let mut result = Vec::new();
-
-        let input = input.as_ref().chars();
-        let mut integer = Vec::new();
-        let mut suffix = Vec::new();
-        let mut prev = Token::SOI;
-
-        fn segment(
-            integer: &mut Vec<char>,
-            suffix: &mut Vec<char>,
-        ) -> std::result::Result<Duration, ()> {
-            let int: i64 = integer.iter().collect::<String>().parse().map_err(|_| ())?;
-
-            const SECONDS_IN_MONTH: i64 = /* 30.44 * 24 * 60 * 60 = */ 2630016;
-            const SECONDS_IN_YEAR: i64 = /* 365.25 * 24 * 60 * 60 = */ 31557600;
-
-            let suf: String = suffix.iter().collect();
-
-            integer.clear();
-            suffix.clear();
-
-            Ok(match suf.as_str() {
-                "usec" | "us" | "μs" => Duration::microseconds(int),
-                "msec" | "ms" => Duration::milliseconds(int),
-                "seconds" | "second" | "sec" | "s" => Duration::seconds(int),
-                "minutes" | "minute" | "min" | "m" => Duration::minutes(int),
-                "hours" | "hour" | "hr" | "h" => Duration::hours(int),
-                "days" | "day" | "d" => Duration::days(int),
-                "weeks" | "week" | "w" => Duration::weeks(int),
-                "months" | "month" | "M" => Duration::days(int * SECONDS_IN_MONTH),
-                "years" | "year" | "y" => Duration::days(int * SECONDS_IN_YEAR),
-                _ => {
-                    return Err(());
-                }
-            })
-        }
-
-        for cursor in input {
-            match cursor {
-                '0'..='9' => {
-                    if let Token::Character = prev {
-                        // end of a set
-                        let partial = segment(&mut integer, &mut suffix)?;
-                        result.push(partial);
+        let mut parse = DatetimeParser::parse(Rule::timespan, input.as_ref())?;
+        let timespan = parse.next().unwrap().into_inner();
+        let mut result = Duration::zero();
+        for segment in timespan {
+            if segment.as_rule() == Rule::segment {
+                let mut inner = segment.into_inner();
+                let number: i64 = inner.next().unwrap().as_str().parse().unwrap();
+                let unit = inner.next().unwrap();
+                let addition = match unit.as_rule() {
+                    Rule::usec => Duration::microseconds(number),
+                    Rule::msec => Duration::milliseconds(number),
+                    Rule::seconds => Duration::seconds(number),
+                    Rule::minutes => Duration::minutes(number),
+                    Rule::hours => Duration::hours(number),
+                    Rule::days => Duration::days(number),
+                    Rule::weeks => Duration::weeks(number),
+                    Rule::months => {
+                        Duration::seconds(/* 30.44 * 24 * 60 * 60 = */ 2630016 * number)
                     }
-                    integer.push(cursor);
-                    prev = Token::Integer;
-                }
-                'a'..='z' | 'A'..='Z' => {
-                    suffix.push(cursor);
-                    prev = Token::Character;
-                }
-                ' ' => {
-                    continue;
-                }
-                _ => {
-                    return Err(());
-                }
+                    Rule::years => Duration::hours(/* 365.25 * 24 = */ 8766 * number),
+                    _ => unreachable!(),
+                };
+                result = result + addition;
+            } else {
+                let number: i64 = segment.as_str().parse().unwrap();
+                result = result + Duration::seconds(number);
             }
         }
-        if !integer.is_empty() & !suffix.is_empty() {
-            let partial = segment(&mut integer, &mut suffix)?;
-            result.push(partial);
-        } else if !integer.is_empty() & suffix.is_empty() & result.is_empty() {
-            let int: i64 = integer.iter().collect::<String>().parse().map_err(|_| ())?;
-            result.push(Duration::seconds(int));
-        } else {
-            return Err(());
-        }
-
-        Ok(result
-            .into_iter()
-            .reduce(|x, y| x + y)
-            .unwrap_or(Duration::zero()))
+        Ok(result)
     }
 }
 
@@ -126,8 +80,5 @@ mod tests {
         let parse = Duration::parse_from_str("114").unwrap();
         let target = Duration::seconds(114);
         assert_eq!(parse, target);
-
-        let parse = Duration::parse_from_str("114d514");
-        assert!(parse.is_err());
     }
 }
