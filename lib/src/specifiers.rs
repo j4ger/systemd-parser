@@ -121,7 +121,7 @@ pub(crate) fn resolve(
                 )
             }
         }
-        'I' => {
+        'J' => {
             if let UnitType::Instance(instance_name, _) = unit_type(filename)? {
                 instance_name.split('-').last().unwrap().to_string()
             } else {

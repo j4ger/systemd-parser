@@ -88,7 +88,6 @@ impl EntryAttributes {
                         result.must = true;
                         Ok(())
                     } else if nested.path.is_ident("subdir") {
-                        unimplemented!();
                         nested.input.parse::<Token![=]>()?;
                         let value: LitStr = nested.input.parse()?;
                         result.subdir = Some(value.into_token_stream());

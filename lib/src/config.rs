@@ -204,6 +204,7 @@ pub trait UnitConfig: Sized + Clone {
 
     fn __load<S: AsRef<Path>>(
         path: S,
+        paths: Rc<Vec<PathBuf>>,
         filename: &str,
         from: Option<&Self>,
         root: bool,
@@ -217,15 +218,23 @@ pub trait UnitConfig: Sized + Clone {
         file.read_to_string(&mut content).context(ReadFileSnafu {
             path: path.to_string_lossy().to_string(),
         })?;
-        let parser =
-            crate::parser::UnitParser::new(content.as_ref(), Rc::new(context), filename, path)?;
+        let parser = crate::parser::UnitParser::new(
+            content.as_ref(),
+            paths,
+            Rc::new(context),
+            filename,
+            path,
+        )?;
         Self::__parse_unit(parser, from)
     }
 
     fn load<S: AsRef<Path>>(path: S, root: bool) -> Result<Self> {
         let path = path.as_ref();
+        let empty_vec: Vec<PathBuf> = Vec::new();
+        let paths = Rc::new(empty_vec);
         Self::__load(
             path,
+            paths,
             path.file_name()
                 .map_or("".to_string(), |x| x.to_string_lossy().to_string())
                 .as_str(),
@@ -240,6 +249,8 @@ pub trait UnitConfig: Sized + Clone {
         root: bool,
     ) -> Result<Self> {
         // return when first one is found?
+        let paths: Vec<PathBuf> = paths.iter().map(|x| x.as_ref().to_path_buf()).collect();
+        let paths_rc = Rc::new(paths);
         let name = name.as_ref();
         let fullname = if name.ends_with(Self::SUFFIX) {
             name.to_string()
@@ -258,11 +269,12 @@ pub trait UnitConfig: Sized + Clone {
         let mut result = None;
 
         // load itself
-        for dir in paths.iter() {
-            let dir = dir.as_ref();
+        let paths = Rc::clone(&paths_rc);
+        for dir in (*paths).iter() {
             let mut path = dir.to_owned();
             path.push(actual_file_name.as_str());
-            if let Ok(res) = Self::__load(path, fullname.as_str(), None, root) {
+            if let Ok(res) = Self::__load(path, Rc::clone(&paths_rc), fullname.as_str(), None, root)
+            {
                 result = Some(res);
                 break;
             }
@@ -281,8 +293,7 @@ pub trait UnitConfig: Sized + Clone {
         }
 
         for dir_name in dropin_dir_names.iter() {
-            for dir in paths.iter() {
-                let dir = dir.as_ref();
+            for dir in (*paths).iter() {
                 let mut path = dir.to_owned();
                 path.push(dir_name.as_str());
                 if path.is_dir() {
@@ -293,8 +304,10 @@ pub trait UnitConfig: Sized + Clone {
                                     if meta.is_file()
                                         && entry.path().extension().is_some_and(|x| x == "conf")
                                     {
+                                        let paths = Rc::clone(&paths_rc);
                                         if let Ok(res) = Self::__load(
                                             entry.path(),
+                                            paths,
                                             fullname.as_str(),
                                             result.as_ref(),
                                             root,

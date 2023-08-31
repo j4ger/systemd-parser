@@ -51,16 +51,16 @@ pub(crate) fn gen_entry_parse(field: &Field) -> Result<TokenStream> {
         .key
         .unwrap_or((format!("{}", name)).into_token_stream());
 
-    let result = match (attributes.default, attributes.multiple) {
-        (_, true) => {
+    let result = match (attributes.default, attributes.multiple, attributes.subdir) {
+        (_, true, None) => {
             quote! {
                 #key => {
                     if __pair.1.as_str().is_empty() {
                         #name.clear();
                         continue;
                     }
-                    for part in __pair.1.split_ascii_whitespace(){
-                        match unit_parser::internal::UnitEntry::parse_from_str(part){
+                    for __part in __pair.1.split_ascii_whitespace(){
+                        match unit_parser::internal::UnitEntry::parse_from_str(__part){
                             Ok(__inner) => {
                                 #name.push(__inner);
                             }
@@ -72,7 +72,29 @@ pub(crate) fn gen_entry_parse(field: &Field) -> Result<TokenStream> {
                 }
             }
         }
-        (Some(default), false) => {
+        (_, true, Some(subdir)) => {
+            quote! {
+                #key => {
+                    if __pair.1.as_str().is_empty() {
+                        #name.clear();
+                        continue;
+                    }
+                    for __part in __pair.1.split_ascii_whitespace(){
+                        match unit_parser::internal::UnitEntry::parse_from_str(__part){
+                            Ok(__inner) => {
+                                #name.push(__inner);
+                            }
+                            Err(_) => {
+                                log::warn!("Failed to parse {} for key {}, ignoring.", __pair.0, __pair.1);
+                            }
+                        }
+                    }
+                    let __subdirs = __subdir_parser.__parse_subdir(#subdir);
+                    #name.extend_from_slice(&__subdirs);
+                }
+            }
+        }
+        (Some(default), false, None) => {
             let default = transform_default(ty, &default)?;
             quote! {
                 #key => {
@@ -82,7 +104,7 @@ pub(crate) fn gen_entry_parse(field: &Field) -> Result<TokenStream> {
                 }
             }
         }
-        (None, false) => {
+        (None, false, None) => {
             quote! {
                 #key => {
                     let __value = unit_parser::internal::UnitEntry::parse_from_str(__pair.1.as_str())
@@ -90,6 +112,12 @@ pub(crate) fn gen_entry_parse(field: &Field) -> Result<TokenStream> {
                     #name = Some(__value);
                 }
             }
+        }
+        (_, false, Some(_)) => {
+            return Err(Error::new_spanned(
+                field,
+                "`subdir` entries must also be `multiple`.",
+            ));
         }
     };
 

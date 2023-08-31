@@ -1,4 +1,8 @@
-use std::{path::Path, rc::Rc};
+use std::{
+    fs::read_dir,
+    path::{Path, PathBuf},
+    rc::Rc,
+};
 
 use crate::{
     config::Result,
@@ -15,6 +19,7 @@ pub struct UnitFileParser;
 
 pub struct UnitParser<'a> {
     context: Rc<SpecifierContext>,
+    paths: Rc<Vec<PathBuf>>,
     filename: &'a str,
     path: &'a Path,
     inner: Pairs<'a, Rule>,
@@ -23,6 +28,7 @@ pub struct UnitParser<'a> {
 impl<'a> UnitParser<'a> {
     pub(crate) fn new(
         input: &'a str,
+        paths: Rc<Vec<PathBuf>>,
         context: Rc<SpecifierContext>,
         filename: &'a str,
         path: &'a Path,
@@ -33,6 +39,7 @@ impl<'a> UnitParser<'a> {
         let sections = parse.next().unwrap().into_inner();
         Ok(Self {
             inner: sections,
+            paths,
             filename,
             path,
             context,
@@ -70,20 +77,24 @@ impl<'a> Iterator for UnitParser<'a> {
 
         let context = Rc::clone(&self.context);
 
+        let paths = Rc::clone(&self.paths);
+
         Some(Ok(SectionParser {
+            paths,
             name: section_name,
             inner,
             context,
             path: self.path,
-            filename: self.filename,
+            filename: self.filename.into(),
         }))
     }
 }
 
 pub struct SectionParser<'a> {
+    paths: Rc<Vec<PathBuf>>,
     pub name: &'a str,
     inner: Pairs<'a, Rule>,
-    filename: &'a str,
+    filename: Rc<str>,
     path: &'a Path,
     context: Rc<SpecifierContext>,
 }
@@ -127,7 +138,7 @@ impl<'a> Iterator for SectionParser<'a> {
                         resolve(
                             item.as_str().chars().nth(0).unwrap(),
                             self.context.as_ref(),
-                            self.filename,
+                            self.filename.as_ref(),
                             self.path,
                         )
                         .unwrap_or("".to_string())
@@ -140,5 +151,42 @@ impl<'a> Iterator for SectionParser<'a> {
         } else {
             return None;
         }
+    }
+}
+
+pub struct SubdirParser {
+    paths: Rc<Vec<PathBuf>>,
+    filename: Rc<str>,
+}
+
+impl<'a> SectionParser<'a> {
+    pub fn __subdir_parser(&'a self) -> SubdirParser {
+        let paths = Rc::clone(&self.paths);
+        let filename = Rc::clone(&self.filename);
+
+        SubdirParser { paths, filename }
+    }
+}
+
+impl SubdirParser {
+    pub fn __parse_subdir(&self, subdir: &str) -> Vec<String> {
+        let mut result = Vec::new();
+        for dir in (*self.paths).iter() {
+            let mut path = dir.to_owned();
+            let path_end = format!("{}.{}", self.filename, subdir);
+            path.push(path_end.as_str());
+            if let Ok(read_res) = read_dir(path) {
+                for item in read_res {
+                    if let Ok(entry) = item {
+                        if let Ok(meta) = entry.metadata() {
+                            if meta.is_symlink() {
+                                result.push(entry.file_name().to_string_lossy().to_string());
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        result
     }
 }

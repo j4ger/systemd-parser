@@ -43,6 +43,7 @@ pub fn gen_section_derives(input: DeriveInput) -> Result<TokenStream> {
     let result = quote! {
         impl unit_parser::internal::UnitSection for #ident {
             fn __parse_section(__source: unit_parser::internal::SectionParser, __from: Option<Self>) -> unit_parser::internal::Result<Option<Self>> {
+                let __subdir_parser = __source.__subdir_parser();
                 # ( #entry_ensures )*
                 # ( #entry_inits )*
                 for __entry in __source {
