@@ -33,21 +33,26 @@ pub(crate) fn unescape_non_path<S: AsRef<str>>(input: S) -> String {
     input.as_ref().replace('-', "/")
 }
 
-#[test]
-fn test_escape() {
-    assert_eq!(escape("/dev//sda"), "dev-sda".to_string());
-    assert_eq!(escape("/foo//bar/baz/"), "foo-bar-baz".to_string());
-}
+#[cfg(test)]
+mod tests {
+    use crate::escape::{escape, unescape_non_path, unescape_path};
 
-#[test]
-fn test_unescape_path() {
-    assert_eq!(unescape_path("dev-sda"), "/dev/sda".to_string());
-}
+    #[test]
+    fn test_escape() {
+        assert_eq!(escape("/dev//sda"), "dev-sda".to_string());
+        assert_eq!(escape("/foo//bar/baz/"), "foo-bar-baz".to_string());
+    }
 
-#[test]
-fn test_unescape_non_path() {
-    assert_eq!(
-        unescape_non_path("normal-escaped-string"),
-        "normal/escaped/string".to_string()
-    );
+    #[test]
+    fn test_unescape_path() {
+        assert_eq!(unescape_path("dev-sda"), "/dev/sda".to_string());
+    }
+
+    #[test]
+    fn test_unescape_non_path() {
+        assert_eq!(
+            unescape_non_path("normal-escaped-string"),
+            "normal/escaped/string".to_string()
+        );
+    }
 }
