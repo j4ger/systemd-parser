@@ -18,9 +18,9 @@ date = ${ (number_4b | number_2b) ~ "-" ~ number_2b ~ "-" ~ number_2b }
 
 time = ${ number_2b ~ ":" ~ number_2b ~ ( ":" ~ number_2b ~ ("." ~ number)? )? }
 
-timezone = { ANY* }
+timezone = { ANY+ }
 
-full_len = { weekday? ~ date? ~ time ~ timezone }
+full_len = { weekday? ~ ((date ~ time) | date | time ) ~ timezone? }
 
 usec = {"usec" | "us" | "μs"}
 msec = {"msec" | "ms"}
@@ -35,7 +35,7 @@ years = {"years" | "year" | "y"}
 unit = _{ usec | msec | seconds | minutes | hours | days | weeks | months | years }
 segment = { number ~ unit }
 
-timespan = { segment* ~ number? }
+timespan = { segment+ | number }
 
 relative_forward = { ("+" ~ timespan) | (timespan ~ "left") }
 relative_backward = { ("-" ~ timespan) | (timespan ~ "ago") }
@@ -49,3 +49,4 @@ special = { (today | yesturday | tomorrow | now) ~ timezone? }
 
 absolute = ${ "@" ~ number }
 
+timestamp = { full_len | absolute | relative | special }
