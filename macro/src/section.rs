@@ -115,9 +115,8 @@ pub(crate) fn gen_section_parse(field: &Field) -> Result<TokenStream> {
             quote! {
                 #key => {
                     let __section_partial = __from.and_then(|x| x.#name.as_ref().map(|x| x.clone()));
-                    let __value = unit_parser::internal::UnitSection::__parse_section(__section, __section_partial)?
-                        .ok_or(unit_parser::internal::Error::SectionParsingError{ key: #key.to_string() })?;
-                    #name = Some(__value);
+                    let __value = unit_parser::internal::UnitSection::__parse_section(__section, __section_partial).ok();
+                    #name = __value;
                 }
             }
         }

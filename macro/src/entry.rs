@@ -181,7 +181,7 @@ pub(crate) fn gen_entry_finalize(field: &Field) -> Result<TokenStream> {
                 }
             }
         }
-        (Some(default), false, _) => {
+        (Some(default), false, false) => {
             let default = transform_default(ty, &default)?;
             quote! {
                 let #name = #name.unwrap_or(#default);
