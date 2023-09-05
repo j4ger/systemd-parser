@@ -122,18 +122,10 @@ pub(crate) fn gen_section_parse(field: &Field) -> Result<TokenStream> {
             }
         }
         (true, true) => {
-            quote! {
-                #key => {
-                    const _: fn() = || {
-                        fn assert_impl<T: Default>() {}
-                        assert_impl::<#ty>();
-                    };
-                    let __section_partial = __from.map(|x| x.#name.clone());
-                    let __value = unit_parser::internal::UnitSection::__parse_section(__section, __section_partial)?
-                        .unwrap_or(#ty::default());
-                    #name = Some(__value);
-                }
-            }
+            return Err(Error::new_spanned(
+                ty,
+                "`default` attribute should not be applied to `must` sections.",
+            ));
         }
         (false, true) => {
             quote! {

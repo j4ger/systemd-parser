@@ -149,7 +149,7 @@ pub(crate) fn gen_entry_finalize(field: &Field) -> Result<TokenStream> {
                 }
             }
         }
-        (Some(default), true, _) => {
+        (Some(default), true, false) => {
             if !is_vec(ty) {
                 return Err(Error::new_spanned(
                     ty,
@@ -161,6 +161,12 @@ pub(crate) fn gen_entry_finalize(field: &Field) -> Result<TokenStream> {
                     #name = #default;
                 }
             }
+        }
+        (Some(_), _, true) => {
+            return Err(Error::new_spanned(
+                ty,
+                "`default` attribute should not be applied to `must` entries.",
+            ));
         }
         (None, true, false) => {
             if !is_vec(ty) {
