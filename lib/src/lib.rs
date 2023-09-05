@@ -5,6 +5,7 @@ mod parser;
 mod specifiers;
 mod template;
 
+pub mod calender_events;
 mod datetime;
 mod duration;
 
