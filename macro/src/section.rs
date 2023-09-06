@@ -3,7 +3,7 @@ use crate::{
     entry::{
         gen_entry_ensure, gen_entry_finalize, gen_entry_init, gen_entry_parse, gen_entry_patch,
     },
-    type_transform::{extract_type_from_option, is_option},
+    type_transform::extract_type_from_option,
 };
 use proc_macro2::TokenStream;
 use quote::{quote, ToTokens};
@@ -42,7 +42,7 @@ pub fn gen_section_derives(input: DeriveInput) -> Result<TokenStream> {
 
     let result = quote! {
         impl unit_parser::internal::UnitSection for #ident {
-            fn __parse_section(__source: unit_parser::internal::SectionParser, __from: Option<Self>) -> unit_parser::internal::Result<Option<Self>> {
+            fn __parse_section(__source: unit_parser::internal::SectionParser) -> unit_parser::internal::Result<Option<Self>> {
                 let __subdir_parser = __source.__subdir_parser();
                 # ( #entry_ensures )*
                 # ( #entry_inits )*
@@ -55,19 +55,27 @@ pub fn gen_section_derives(input: DeriveInput) -> Result<TokenStream> {
                         }
                     }
                 }
-                match __from {
-                    None => {
-                        #( #entry_finalizes )*
-                        Ok(Some(Self {
-                            #( #entries ),*
-                        }))
-                    }
-                    Some(__from) => {
-                        let mut __from = __from;
-                        #( #entry_patches )*
-                        Ok(Some(__from))
+                #( #entry_finalizes )*
+                Ok(Some(Self {
+                    #( #entries ),*
+                }))
+            }
+
+            fn __patch_section(__source: unit_parser::internal::SectionParser, __from: &mut Self) -> unit_parser::internal::Result<()> {
+                let __subdir_parser = __source.__subdir_parser();
+                # ( #entry_ensures )*
+                # ( #entry_inits )*
+                for __entry in __source {
+                    let __pair = __entry?;
+                    match __pair.0 {
+                        #( #entry_parsers ),*
+                        _ => {
+                            log::warn!("{} is not a valid key.", __pair.0);
+                        }
                     }
                 }
+                #( #entry_patches )*
+                Ok(())
             }
         }
     };
@@ -85,57 +93,87 @@ pub(crate) fn gen_section_init(field: &Field) -> Result<TokenStream> {
     })
 }
 
-pub(crate) fn gen_section_parse(field: &Field) -> Result<TokenStream> {
+pub(crate) fn gen_section_parse(field: &Field) -> Result<(TokenStream, TokenStream)> {
     let name = field.ident.as_ref().ok_or(Error::new_spanned(
         field,
         "Tuple structs are not supported.",
     ))?;
     let ty = &field.ty;
-    let attributes = SectionAttributes::parse_vec(&field.attrs)?;
+    let attributes = SectionAttributes::parse_vec(field, Some(ty))?;
     let key = attributes
         .key
         .unwrap_or((format!("{}", name)).into_token_stream());
 
     let result = match (attributes.default, attributes.must) {
-        (true, false) => {
+        // invalid
+        (true, true) => unreachable!(),
+        // convert Error to Option
+        (true, false) => (
             quote! {
                 #key => {
                     const _: fn() = || {
                         fn assert_impl<T: Default>() {}
                         assert_impl::<#ty>();
                     };
-                    let __section_partial = __from.and_then(|x| x.#name.as_ref().map(|x| x.clone()));
-                    let __value = unit_parser::internal::UnitSection::__parse_section(__section, __section_partial)?
-                        .unwrap_or(#ty::default());
-                    #name = Some(__value);
+                    if let Ok(__value) = unit_parser::internal::UnitSection::__parse_section(__section) {
+                        if __value.is_some() {
+                            #name = __value;
+                        }
+                    } else {
+                        log::warn!("Failed to parse section {}.", #key);
+                    }
                 }
-            }
-        }
-        (false, false) => {
+            },
             quote! {
                 #key => {
-                    let __section_partial = __from.and_then(|x| x.#name.as_ref().map(|x| x.clone()));
-                    let __value = unit_parser::internal::UnitSection::__parse_section(__section, __section_partial).ok();
-                    #name = __value;
+                    let __section_partial = &mut __from.#name;
+                    if let Err(_)= unit_parser::internal::UnitSection::__patch_section(__section, __section_partial) {
+                        log::warn!("Failed to parse section {}, skipping.", #key)
+                    }
                 }
-            }
-        }
-        (true, true) => {
-            return Err(Error::new_spanned(
-                ty,
-                "`default` attribute should not be applied to `must` sections.",
-            ));
-        }
-        (false, true) => {
+            },
+        ),
+        // convert Error to Option
+        (false, false) => (
             quote! {
                 #key => {
-                    let __section_partial = __from.map(|x| x.#name.clone());
-                    let __value = unit_parser::internal::UnitSection::__parse_section(__section, __section_partial)?
+                    if let Ok(__value) = unit_parser::internal::UnitSection::__parse_section(__section) {
+                        #name = __value;
+                    } else {
+                        log::warn!("Failed to parse section {}, skipping.", #key);
+                    }
+                }
+            },
+            quote! {
+                #key => {
+                    if let Some(__section_partial) = &mut __from.#name {
+                        if let Err(_) = unit_parser::internal::UnitSection::__patch_section(__section, __section_partial) {
+                            log::warn!("Failed to patch section {}, skipping.", #key);
+                        }
+                    } else {
+                        if let Ok(__inner) = unit_parser::internal::UnitSection::__parse_section(__section) {
+                            __from.#name = __inner;
+                        }
+                    }
+               }
+            },
+        ),
+        // throw Error
+        (false, true) => (
+            quote! {
+                #key => {
+                    let __value = unit_parser::internal::UnitSection::__parse_section(__section)?
                         .ok_or(unit_parser::internal::Error::SectionParsingError{ key: #key.to_string() })?;
                     #name = Some(__value);
                 }
-            }
-        }
+            },
+            quote! {
+                #key => {
+                    let __section_partial = &mut __from.#name;
+                    unit_parser::internal::UnitSection::__patch_section(__section, __section_partial)
+                        .map_err(|_| unit_parser::internal::Error::SectionParsingError{ key: #key.to_string() })?;                }
+            },
+        ),
     };
 
     Ok(result)
@@ -143,7 +181,7 @@ pub(crate) fn gen_section_parse(field: &Field) -> Result<TokenStream> {
 
 pub(crate) fn gen_section_ensure(field: &Field) -> Result<TokenStream> {
     let mut ty = &field.ty;
-    let attribute = SectionAttributes::parse_vec(&field.attrs)?;
+    let attribute = SectionAttributes::parse_vec(field, None)?;
     if (!attribute.must) & (!attribute.default) {
         ty = extract_type_from_option(ty)?;
     }
@@ -161,29 +199,27 @@ pub(crate) fn gen_section_finalize(field: &Field) -> Result<TokenStream> {
         "Tuple structs are not supported.",
     ))?;
     let ty = &field.ty;
-    let attributes = SectionAttributes::parse_vec(&field.attrs)?;
+    let attributes = SectionAttributes::parse_vec(field, None)?;
     let key = attributes
         .key
         .unwrap_or((format!("{}", name)).into_token_stream());
 
     let result = match (attributes.default, attributes.must) {
-        (true, _) => {
+        (true, true) => unreachable!(),
+        // fallback to default
+        (true, false) => {
             quote! {
                 let #name: #ty = #name.unwrap_or(Default::default());
             }
         }
+        // throw Error
         (false, true) => {
             quote! {
                 let #name = #name.ok_or(unit_parser::internal::Error::SectionMissingError { key: #key.to_string()})?;
             }
         }
+        // leave unchanged
         (false, false) => {
-            if !is_option(ty) {
-                return Err(Error::new_spanned(
-                    ty,
-                    "Fields without either `must` or `default` attribute should be `Option`s.",
-                ));
-            }
             quote! {}
         }
     };
@@ -196,21 +232,25 @@ pub(crate) fn gen_section_patches(field: &Field) -> Result<TokenStream> {
         field,
         "Tuple structs are not supported.",
     ))?;
-    let attributes = SectionAttributes::parse_vec(&field.attrs)?;
+    let attributes = SectionAttributes::parse_vec(field, None)?;
 
-    let result = match attributes.must {
-        false => {
-            quote! {
-                if #name.is_some() {
-                    __from_clone.#name = #name;
-                }
-            }
-        }
-        true => {
+    let result = match (attributes.must, attributes.default) {
+        // invalid
+        (true, true) => unreachable!(),
+        // unwrap inner if new value is Some
+        (true, false) | (false, true) => {
             quote! {
                  if let Some(__inner) = #name {
-                     __from_clone.#name = __inner;
+                     __from.#name = __inner;
                  }
+            }
+        }
+        // set to new value if new value is Some
+        (false, false) => {
+            quote! {
+                if #name.is_some() {
+                    __from.#name = #name;
+                }
             }
         }
     };

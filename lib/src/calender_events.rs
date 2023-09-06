@@ -4,7 +4,7 @@ use chrono::prelude::*;
 
 use crate::{config::UnitEntry, datetime::Rule};
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub enum CalenderEvent {
     Once(DateTime<Utc>),
     Repetitive(Schedule),
@@ -39,10 +39,10 @@ impl Iterator for CalenderEventIterator {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct Schedule {}
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 enum ValidType<T: PartialEq> {
     All,
     AnyOf(Vec<T>),

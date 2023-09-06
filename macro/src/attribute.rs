@@ -1,6 +1,8 @@
 use proc_macro2::TokenStream;
 use quote::ToTokens;
-use syn::{Attribute, Error, Expr, LitStr, Token};
+use syn::{Attribute, Error, Expr, Field, LitStr, Token, Type};
+
+use crate::type_transform::{is_option, is_vec};
 
 pub(crate) struct SectionAttributes {
     pub(crate) default: bool,
@@ -19,9 +21,9 @@ impl Default for SectionAttributes {
 }
 
 impl SectionAttributes {
-    pub(crate) fn parse_vec(input: &Vec<Attribute>) -> syn::Result<Self> {
+    pub(crate) fn parse_vec(input: &Field, ty: Option<&Type>) -> syn::Result<Self> {
         let mut result = SectionAttributes::default();
-        for attribute in input {
+        for attribute in input.attrs.iter() {
             if attribute.path().is_ident("section") {
                 attribute.parse_nested_meta(|nested| {
                     if nested.path.is_ident("default") {
@@ -39,6 +41,20 @@ impl SectionAttributes {
                         Err(Error::new_spanned(attribute, "Not a valid attribute."))
                     }
                 })?;
+            }
+        }
+        if result.default & result.must {
+            return Err(Error::new_spanned(
+                input,
+                "`default` and `must` cannot co-exist.",
+            ));
+        }
+        if let Some(ty) = ty {
+            if (!result.must) & (!result.default) & (!is_option(ty)) {
+                return Err(Error::new_spanned(
+                    input,
+                    "Optional fields should be `Option`s.",
+                ));
             }
         }
         Ok(result)
@@ -66,9 +82,10 @@ impl Default for EntryAttributes {
 }
 
 impl EntryAttributes {
-    pub(crate) fn parse_vec(input: &Vec<Attribute>) -> syn::Result<Self> {
+    // pass in type to do type check, or pass in None to prevent errors from showing up multiple times
+    pub(crate) fn parse_vec(input: &Field, ty: Option<&Type>) -> syn::Result<Self> {
         let mut result = EntryAttributes::default();
-        for attribute in input {
+        for attribute in input.attrs.iter() {
             if attribute.path().is_ident("entry") {
                 attribute.parse_nested_meta(|nested| {
                     if nested.path.is_ident("default") {
@@ -98,6 +115,39 @@ impl EntryAttributes {
                 })?;
             }
         }
+        if result.must & result.default.is_some() {
+            return Err(Error::new_spanned(
+                input,
+                "`must` and `default` cannot co-exist.",
+            ));
+        }
+        if result.multiple & result.must {
+            return Err(Error::new_spanned(
+                input,
+                "`must` and `multiple` cannot co-exist.",
+            ));
+        }
+        if (!result.multiple) & result.subdir.is_some() {
+            return Err(Error::new_spanned(
+                input,
+                "`subdir` attributed fields must be `multiple`.",
+            ));
+        }
+        if let Some(ty) = ty {
+            if (!result.must) & (!result.default.is_some()) & (!result.multiple) & (!is_option(ty))
+            {
+                return Err(Error::new_spanned(
+                    input,
+                    "Optional fields should be `Option`s.",
+                ));
+            }
+            if result.multiple & (!is_vec(ty)) {
+                return Err(Error::new_spanned(
+                    input,
+                    "`multiple` attributed fields should be `Vec`s.",
+                ));
+            }
+        }
         Ok(result)
     }
 }
@@ -113,9 +163,10 @@ impl Default for UnitAttributes {
 }
 
 impl UnitAttributes {
+    // pass in type to do type check, or pass in None to prevent errors from showing up multiple times
     pub(crate) fn parse_vec(input: &Vec<Attribute>) -> syn::Result<Self> {
         let mut result = UnitAttributes::default();
-        for attribute in input {
+        for attribute in input.iter() {
             if attribute.path().is_ident("unit") {
                 attribute.parse_nested_meta(|nested| {
                     if nested.path.is_ident("suffix") {

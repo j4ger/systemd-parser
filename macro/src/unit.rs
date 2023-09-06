@@ -39,6 +39,9 @@ pub fn gen_unit_derives(input: DeriveInput) -> syn::Result<TokenStream> {
         ));
     }
 
+    let parse_parsers = section_parsers.iter().map(|x| &x.0);
+    let patch_parsers = section_parsers.iter().map(|x| &x.1);
+
     let ident = &input.ident;
 
     let suffix = attributes
@@ -48,32 +51,38 @@ pub fn gen_unit_derives(input: DeriveInput) -> syn::Result<TokenStream> {
     let result = quote! {
          impl unit_parser::internal::UnitConfig for #ident {
             const SUFFIX: &'static str = #suffix;
-            fn __parse_unit(__source: unit_parser::internal::UnitParser, __from: Option<&Self>) -> unit_parser::internal::Result<Self> {
+            fn __parse_unit(__source: unit_parser::internal::UnitParser) -> unit_parser::internal::Result<Self> {
                 #( #section_ensures )*
                 #( #section_inits )*
                 for __section in __source {
                     let __section = __section?;
                     match __section.name {
-                        #( #section_parsers ),*
+                        #( #parse_parsers ),*
                         _ => {
                             log::warn!("{} is not a valid section.", __section.name);
                         }
                     }
                 }
-                match __from {
-                    None => {
-                        #( #section_finalizes )*
-                        Ok(Self {
-                            #( #sections ),*
-                        })
-                    }
-                    Some(__from_inner) => {
-                        let mut __from_clone = __from_inner.clone();
-                        #( #section_patches )*
-                        Ok(__from_clone)
+                #( #section_finalizes )*
+                Ok(Self {
+                    #( #sections ),*
+                })
+            }
+
+            fn __patch_unit(__source: unit_parser::internal::UnitParser, __from: &mut Self) -> unit_parser::internal::Result<()> {
+                #( #section_inits )*
+                for __section in __source {
+                    let __section = __section?;
+                    match __section.name {
+                        #( #patch_parsers ),*
+                        _ => {
+                            log::warn!("{} is not a valid section.", __section.name);
+                        }
                     }
                 }
-            }
+                #( #section_patches )*
+                Ok(())
+             }
         }
     };
 

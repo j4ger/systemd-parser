@@ -22,15 +22,15 @@ use std::{
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
-pub trait UnitConfig: Sized + Clone {
+pub trait UnitConfig: Sized {
     const SUFFIX: &'static str;
-    fn __parse_unit(__source: UnitParser, __from: Option<&Self>) -> Result<Self>;
+    fn __parse_unit(__source: UnitParser) -> Result<Self>;
+    fn __patch_unit(__source: UnitParser, __from: &mut Self) -> Result<()>;
 
     fn __load<S: AsRef<Path>>(
         path: S,
         paths: Rc<Vec<PathBuf>>,
         filename: &str,
-        from: Option<&Self>,
         root: bool,
     ) -> Result<Self> {
         let context = SpecifierContext::new(root);
@@ -49,7 +49,33 @@ pub trait UnitConfig: Sized + Clone {
             filename,
             path,
         )?;
-        Self::__parse_unit(parser, from)
+        Self::__parse_unit(parser)
+    }
+
+    fn __patch<S: AsRef<Path>>(
+        path: S,
+        paths: Rc<Vec<PathBuf>>,
+        filename: &str,
+        from: &mut Self,
+        root: bool,
+    ) -> Result<()> {
+        let context = SpecifierContext::new(root);
+        let path = path.as_ref();
+        let mut file = File::open(path).context(ReadFileSnafu {
+            path: path.to_string_lossy().to_string(),
+        })?;
+        let mut content = String::new();
+        file.read_to_string(&mut content).context(ReadFileSnafu {
+            path: path.to_string_lossy().to_string(),
+        })?;
+        let parser = crate::parser::UnitParser::new(
+            content.as_ref(),
+            paths,
+            Rc::new(context),
+            filename,
+            path,
+        )?;
+        Self::__patch_unit(parser, from)
     }
 
     fn load<S: AsRef<Path>>(path: S, root: bool) -> Result<Self> {
@@ -62,7 +88,6 @@ pub trait UnitConfig: Sized + Clone {
             path.file_name()
                 .map_or("".to_string(), |x| x.to_string_lossy().to_string())
                 .as_str(),
-            None,
             root,
         )
     }
@@ -97,12 +122,19 @@ pub trait UnitConfig: Sized + Clone {
         for dir in (*paths).iter() {
             let mut path = dir.to_owned();
             path.push(actual_file_name.as_str());
-            if let Ok(res) = Self::__load(path, Rc::clone(&paths_rc), fullname.as_str(), None, root)
-            {
+            if let Ok(res) = Self::__load(path, Rc::clone(&paths_rc), fullname.as_str(), root) {
                 result = Some(res);
                 break;
             }
         }
+
+        let mut result = if let Some(result) = result {
+            result
+        } else {
+            return Err(Error::NoUnitFoundError {
+                name: name.to_string(),
+            });
+        };
 
         // load drop-ins
         let mut dropin_dir_names = vec![
@@ -129,14 +161,14 @@ pub trait UnitConfig: Sized + Clone {
                                         && entry.path().extension().is_some_and(|x| x == "conf")
                                     {
                                         let paths = Rc::clone(&paths_rc);
-                                        if let Ok(res) = Self::__load(
+                                        if let Err(err) = Self::__patch(
                                             entry.path(),
                                             paths,
                                             fullname.as_str(),
-                                            result.as_ref(),
+                                            &mut result,
                                             root,
                                         ) {
-                                            result = Some(res);
+                                            log::warn!("Failed to patch unit {}: {})", name, err);
                                         }
                                     }
                                 }
@@ -147,17 +179,16 @@ pub trait UnitConfig: Sized + Clone {
             }
         }
 
-        result.ok_or(Error::NoUnitFoundError {
-            name: name.to_string(),
-        })
+        Ok(result)
     }
 }
 
-pub trait UnitSection: Sized + Clone {
-    fn __parse_section(__source: SectionParser, __from: Option<Self>) -> Result<Option<Self>>;
+pub trait UnitSection: Sized {
+    fn __parse_section(__source: SectionParser) -> Result<Option<Self>>;
+    fn __patch_section(__source: SectionParser, __from: &mut Self) -> Result<()>;
 }
 
-pub trait UnitEntry: Sized + Clone {
+pub trait UnitEntry: Sized {
     type Error;
     fn parse_from_str<S: AsRef<str>>(input: S) -> std::result::Result<Self, Self::Error>;
 }

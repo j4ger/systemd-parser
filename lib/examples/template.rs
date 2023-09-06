@@ -2,14 +2,14 @@
 
 use unit_parser::prelude::*;
 
-#[derive(UnitConfig, Debug, Clone)]
+#[derive(UnitConfig, Debug)]
 #[unit(suffix = "unit")]
 struct Unit {
     #[section(must)]
     Section: Section,
 }
 
-#[derive(UnitSection, Debug, Clone)]
+#[derive(UnitSection, Debug)]
 struct Section {
     #[entry(must)]
     Name: String,

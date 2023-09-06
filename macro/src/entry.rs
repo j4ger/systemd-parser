@@ -5,12 +5,12 @@ use syn::{Data, DeriveInput, Error, Field, Result};
 use crate::{
     attribute::EntryAttributes,
     transform_default::transform_default,
-    type_transform::{extract_type_from_option, extract_type_from_vec, is_option, is_vec},
+    type_transform::{extract_type_from_option, extract_type_from_vec},
 };
 
 pub(crate) fn gen_entry_ensure(field: &Field) -> Result<TokenStream> {
     let mut ty = &field.ty;
-    let attribute = EntryAttributes::parse_vec(&field.attrs)?;
+    let attribute = EntryAttributes::parse_vec(field, None)?;
     if attribute.multiple {
         ty = extract_type_from_vec(ty)?;
     } else if (!attribute.must) & (attribute.default.is_none()) {
@@ -29,7 +29,7 @@ pub(crate) fn gen_entry_init(field: &Field) -> Result<TokenStream> {
         field,
         "Tuple structs are not supported.",
     ))?;
-    let attributes = EntryAttributes::parse_vec(&field.attrs)?;
+    let attributes = EntryAttributes::parse_vec(field, None)?;
     Ok(match attributes.multiple {
         false => quote! {
             let mut #name = None;
@@ -46,13 +46,21 @@ pub(crate) fn gen_entry_parse(field: &Field) -> Result<TokenStream> {
         "Tuple structs are not supported.",
     ))?;
     let ty = &field.ty;
-    let attributes = EntryAttributes::parse_vec(&field.attrs)?;
+    let attributes = EntryAttributes::parse_vec(field, Some(ty))?;
     let key = attributes
         .key
         .unwrap_or((format!("{}", name)).into_token_stream());
 
-    let result = match (attributes.default, attributes.multiple, attributes.subdir) {
-        (_, true, None) => {
+    let result = match (
+        attributes.default,
+        attributes.multiple,
+        attributes.subdir,
+        attributes.must,
+    ) {
+        // unreachable
+        (Some(_), _, _, true) | (_, true, _, true) | (_, false, Some(_), _) => unreachable!(),
+        // add to Vec
+        (_, true, None, _) => {
             quote! {
                 #key => {
                     if __pair.1.as_str().is_empty() {
@@ -72,7 +80,8 @@ pub(crate) fn gen_entry_parse(field: &Field) -> Result<TokenStream> {
                 }
             }
         }
-        (_, true, Some(subdir)) => {
+        // add to Vec, as well as subdirs
+        (_, true, Some(subdir), _) => {
             quote! {
                 #key => {
                     if __pair.1.as_str().is_empty() {
@@ -94,17 +103,18 @@ pub(crate) fn gen_entry_parse(field: &Field) -> Result<TokenStream> {
                 }
             }
         }
-        (Some(default), false, None) => {
-            let default = transform_default(ty, &default)?;
+        // set as Some if Ok
+        (_, false, None, false) => {
             quote! {
                 #key => {
-                    let __value = unit_parser::internal::UnitEntry::parse_from_str(__pair.1.as_str())
-                        .unwrap_or(#default);
-                    #name = Some(__value);
+                    if let Ok(__value) = unit_parser::internal::UnitEntry::parse_from_str(__pair.1.as_str()) {
+                        #name = Some(__value);
+                    }
                 }
             }
         }
-        (None, false, None) => {
+        // throw Error
+        (None, false, None, true) => {
             quote! {
                 #key => {
                     let __value = unit_parser::internal::UnitEntry::parse_from_str(__pair.1.as_str())
@@ -112,12 +122,6 @@ pub(crate) fn gen_entry_parse(field: &Field) -> Result<TokenStream> {
                     #name = Some(__value);
                 }
             }
-        }
-        (_, false, Some(_)) => {
-            return Err(Error::new_spanned(
-                field,
-                "`subdir` entries must also be `multiple`.",
-            ));
         }
     };
 
@@ -130,76 +134,38 @@ pub(crate) fn gen_entry_finalize(field: &Field) -> Result<TokenStream> {
         "Tuple structs are not supported.",
     ))?;
     let ty = &field.ty;
-    let attributes = EntryAttributes::parse_vec(&field.attrs)?;
+    let attributes = EntryAttributes::parse_vec(field, None)?;
     let key = attributes
         .key
         .unwrap_or((format!("{}", name)).into_token_stream());
 
     let result = match (attributes.default, attributes.multiple, attributes.must) {
-        (None, true, true) => {
-            if !is_vec(ty) {
-                return Err(Error::new_spanned(
-                    ty,
-                    "`multiple` attributed fields should be `Vec`s.",
-                ));
-            }
-            quote! {
-                if #name.is_empty() {
-                    return Err(unit_parser::internal::Error::EntryMissingError { key: #key.to_string() });
-                }
-            }
-        }
+        // invalid
+        (Some(_), _, true) | (_, true, true) => unreachable!(),
+        // apply default if empty
         (Some(default), true, false) => {
-            if !is_vec(ty) {
-                return Err(Error::new_spanned(
-                    ty,
-                    "`multiple` attributed fields should be `Vec`s.",
-                ));
-            }
             quote! {
                 if #name.is_empty() {
                     #name = #default;
                 }
             }
         }
-        (Some(_), _, true) => {
-            return Err(Error::new_spanned(
-                ty,
-                "`default` attribute should not be applied to `must` entries.",
-            ));
+        // leave unchanged (`Vec` and `Option`)
+        (None, true, false) | (None, false, false) => {
+            quote! {}
         }
-        (None, true, false) => {
-            if !is_vec(ty) {
-                return Err(Error::new_spanned(
-                    ty,
-                    "`multiple` attributed fields should be `Vec`s.",
-                ));
-            }
-            quote! {
-                if #name.is_empty() {
-                    log::warn!("{} is defined but no value is found.", #key);
-                }
-            }
-        }
+        // unwrap to default
         (Some(default), false, false) => {
             let default = transform_default(ty, &default)?;
             quote! {
                 let #name = #name.unwrap_or(#default);
             }
         }
+        // throw Error
         (None, false, true) => {
             quote! {
                 let #name = #name.ok_or(unit_parser::internal::Error::EntryMissingError { key: #key.to_string()})?;
             }
-        }
-        (None, _, false) => {
-            if !is_option(ty) {
-                return Err(Error::new_spanned(
-                    ty,
-                    "Fields without either `default` or `must` attributes should be `Option`s.",
-                ));
-            }
-            quote! {}
         }
     };
     Ok(result)
@@ -213,7 +179,7 @@ pub(crate) fn gen_entry_derives(input: DeriveInput) -> Result<TokenStream> {
         for variant in inner.variants.iter() {
             let name = &variant.ident;
             let value = format!("{}", name);
-            // use discrimnant for alt-key
+            // TODO: support for alt-key
             let result = quote! {
                 #value => Ok(Self::#name)
             };
@@ -244,32 +210,31 @@ pub(crate) fn gen_entry_patch(field: &Field) -> Result<TokenStream> {
         field,
         "Tuple structs are not supported.",
     ))?;
-    let attributes = EntryAttributes::parse_vec(&field.attrs)?;
+    let attributes = EntryAttributes::parse_vec(field, None)?;
 
-    let result = match (attributes.must, attributes.multiple) {
-        (true, true) => {
+    let result = match (attributes.must, attributes.multiple, attributes.default) {
+        // invalid
+        (true, _, Some(_)) | (true, true, _) => unreachable!(),
+        // append
+        // TODO: or should it overwrite?
+        (false, true, _) => {
             quote! {
-                if !#name.is_empty() {
-                    __from.#name = #name;
-                }
+                __from.#name.extend_from_slice(&#name);
             }
         }
-        (false, true) => {
-            quote! {
-                __from.#name = #name;
-            }
-        }
-        (true, false) => {
-            quote! {
-                if let Some(__inner) = #name {
-                    __from.#name = __inner;
-                }
-            }
-        }
-        (false, false) => {
+        // set (as is) if not None
+        (false, false, None) => {
             quote! {
                 if #name.is_some() {
                     __from.#name = #name;
+                }
+            }
+        }
+        // set if not None
+        (_, false, _) => {
+            quote! {
+                if let Some(__inner) = #name {
+                    __from.#name = __inner;
                 }
             }
         }

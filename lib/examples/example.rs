@@ -3,13 +3,13 @@
 use chrono::Duration;
 use unit_parser::prelude::*;
 
-#[derive(UnitConfig, Debug, Clone)]
+#[derive(UnitConfig, Debug)]
 #[unit(suffix = "unit")]
 pub struct Unit {
     // sections can be attributed with default to fallback to default when not present
     // trait `Default` is required to be implemented
     // sections can also have alternative key name
-    #[section(default, key = "AlternativeKey", must)]
+    #[section(default, key = "AlternativeKey")]
     pub Section1: SimpleSection,
 
     #[section(must)]
@@ -18,7 +18,7 @@ pub struct Unit {
     pub Section3: Option<OptionalSection>,
 }
 
-#[derive(UnitSection, Debug, Clone)]
+#[derive(UnitSection, Debug)]
 pub struct SimpleSection {
     #[entry(must)]
     pub Field: String,
@@ -32,7 +32,7 @@ impl Default for SimpleSection {
     }
 }
 
-#[derive(UnitSection, Debug, Clone)]
+#[derive(UnitSection, Debug)]
 pub struct AdvancedSection {
     /// a regular public config field
     #[entry(must)]
@@ -51,7 +51,7 @@ pub struct AdvancedSection {
     CustomNamed: String,
 
     /// a config field with default value
-    #[entry(default = "default-value", must)]
+    #[entry(default = "default-value")]
     DefaultValued: String,
 
     /// a duration config field
@@ -59,17 +59,17 @@ pub struct AdvancedSection {
     Duration: Duration,
 
     /// a field that can appear multiple times
-    #[entry(multiple, must)]
+    #[entry(multiple)]
     Multiple: Vec<i64>,
 
     /// an optional field
     Optional: Option<u64>,
 }
 
-#[derive(UnitSection, Debug, Clone)]
+#[derive(UnitSection, Debug)]
 pub struct OptionalSection {}
 
-#[derive(UnitEntry, Debug, Clone)]
+#[derive(UnitEntry, Debug)]
 enum MyEnum {
     Val1,
     Val2,
