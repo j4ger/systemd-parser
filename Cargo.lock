@@ -879,6 +879,7 @@ dependencies = [
  "criterion",
  "log",
  "nix",
+ "once_cell",
  "os-release",
  "pest",
  "pest_derive",

@@ -4,11 +4,7 @@ use std::{
     rc::Rc,
 };
 
-use crate::{
-    config::Result,
-    error::*,
-    specifiers::{resolve, SpecifierContext},
-};
+use crate::{config::Result, error::*, specifiers::resolve};
 use pest::{iterators::Pairs, Parser};
 use pest_derive::Parser;
 use snafu::ResultExt;
@@ -18,18 +14,18 @@ use snafu::ResultExt;
 pub struct UnitFileParser;
 
 pub struct UnitParser<'a> {
-    context: Rc<SpecifierContext>,
     paths: Rc<Vec<PathBuf>>,
     filename: &'a str,
     path: &'a Path,
     inner: Pairs<'a, Rule>,
+    root: bool,
 }
 
 impl<'a> UnitParser<'a> {
     pub(crate) fn new(
         input: &'a str,
         paths: Rc<Vec<PathBuf>>,
-        context: Rc<SpecifierContext>,
+        root: bool,
         filename: &'a str,
         path: &'a Path,
     ) -> Result<Self> {
@@ -42,7 +38,7 @@ impl<'a> UnitParser<'a> {
             paths,
             filename,
             path,
-            context,
+            root,
         })
     }
 }
@@ -75,17 +71,15 @@ impl<'a> Iterator for UnitParser<'a> {
 
         let section_name = first_item.as_str();
 
-        let context = Rc::clone(&self.context);
-
         let paths = Rc::clone(&self.paths);
 
         Some(Ok(SectionParser {
             paths,
             name: section_name,
             inner,
-            context,
             path: self.path,
             filename: self.filename.into(),
+            root: self.root,
         }))
     }
 }
@@ -96,7 +90,7 @@ pub struct SectionParser<'a> {
     inner: Pairs<'a, Rule>,
     filename: Rc<str>,
     path: &'a Path,
-    context: Rc<SpecifierContext>,
+    root: bool,
 }
 
 impl<'a> Iterator for SectionParser<'a> {
@@ -137,7 +131,7 @@ impl<'a> Iterator for SectionParser<'a> {
                     value.push_str(
                         resolve(
                             item.as_str().chars().nth(0).unwrap(),
-                            self.context.as_ref(),
+                            self.root,
                             self.filename.as_ref(),
                             self.path,
                         )

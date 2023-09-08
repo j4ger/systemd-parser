@@ -16,6 +16,7 @@ nix = { version = "0.24", default-features = false, features = [
 ] }
 os-release = "0.1.0"
 chrono-tz = "0.8.3"
+once_cell = "1.18.0"
 
 [dev-dependencies]
 criterion = { version = "0.4", features = ["html_reports"] }

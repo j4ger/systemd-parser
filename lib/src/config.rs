@@ -2,7 +2,6 @@ use crate::{
     error::ReadFileSnafu,
     internal::Error,
     parser::{SectionParser, UnitParser},
-    specifiers::SpecifierContext,
     template::{unit_type, UnitType},
 };
 use snafu::ResultExt;
@@ -33,7 +32,6 @@ pub trait UnitConfig: Sized {
         filename: &str,
         root: bool,
     ) -> Result<Self> {
-        let context = SpecifierContext::new(root);
         let path = path.as_ref();
         let mut file = File::open(path).context(ReadFileSnafu {
             path: path.to_string_lossy().to_string(),
@@ -42,13 +40,7 @@ pub trait UnitConfig: Sized {
         file.read_to_string(&mut content).context(ReadFileSnafu {
             path: path.to_string_lossy().to_string(),
         })?;
-        let parser = crate::parser::UnitParser::new(
-            content.as_ref(),
-            paths,
-            Rc::new(context),
-            filename,
-            path,
-        )?;
+        let parser = crate::parser::UnitParser::new(content.as_ref(), paths, root, filename, path)?;
         Self::__parse_unit(parser)
     }
 
@@ -59,7 +51,6 @@ pub trait UnitConfig: Sized {
         from: &mut Self,
         root: bool,
     ) -> Result<()> {
-        let context = SpecifierContext::new(root);
         let path = path.as_ref();
         let mut file = File::open(path).context(ReadFileSnafu {
             path: path.to_string_lossy().to_string(),
@@ -68,13 +59,7 @@ pub trait UnitConfig: Sized {
         file.read_to_string(&mut content).context(ReadFileSnafu {
             path: path.to_string_lossy().to_string(),
         })?;
-        let parser = crate::parser::UnitParser::new(
-            content.as_ref(),
-            paths,
-            Rc::new(context),
-            filename,
-            path,
-        )?;
+        let parser = crate::parser::UnitParser::new(content.as_ref(), paths, root, filename, path)?;
         Self::__patch_unit(parser, from)
     }
 

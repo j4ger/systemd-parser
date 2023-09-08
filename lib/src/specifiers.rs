@@ -7,38 +7,24 @@ use nix::{
     sys::utsname::uname,
     unistd::{Gid, Group},
 };
+use once_cell::sync::Lazy;
 use os_release::OsRelease;
 use std::{env, fs, path::Path};
 
-pub(crate) struct SpecifierContext {
-    os_release: OsRelease,
-    uts: UtsName,
-    root: bool,
-}
-
-impl SpecifierContext {
-    pub(crate) fn new(root: bool) -> Self {
-        let os_release = OsRelease::new().expect("Failed to read os-release.");
-        let uts = uname().expect("Failed to read system information.");
-        Self {
-            os_release,
-            root,
-            uts,
-        }
-    }
-}
+static OS_RELEASE: Lazy<OsRelease> =
+    Lazy::new(|| OsRelease::new().expect("Failed to read os-release."));
+static UTS_NAME: Lazy<UtsName> = Lazy::new(|| uname().expect("Failed to read system information."));
 
 // return Cow?
 pub(crate) fn resolve(
     specifier: char,
-    context: &SpecifierContext,
+    root: bool,
     filename: &str,
     path: &Path,
 ) -> Result<String, Error> {
     let result = match specifier {
-        'a' => context.uts.machine().to_string_lossy().to_string(),
-        'A' => context
-            .os_release
+        'a' => UTS_NAME.machine().to_string_lossy().to_string(),
+        'A' => OS_RELEASE
             .extra
             .get("IMAGE_VERSION")
             .unwrap_or(&"".to_string())
@@ -46,14 +32,13 @@ pub(crate) fn resolve(
         'b' => {
             fs::read_to_string("/proc/sys/kernel/random/boot_id").expect("Failed to read boot_id.")
         }
-        'B' => context
-            .os_release
+        'B' => OS_RELEASE
             .extra
             .get("BUILD_ID")
             .unwrap_or(&"".to_string())
             .into(),
         'C' => {
-            if context.root {
+            if root {
                 "/var/cache".into()
             } else {
                 env::var("XDG_CACHE_HOME").unwrap_or("~/.cache".to_string())
@@ -61,7 +46,7 @@ pub(crate) fn resolve(
         }
         'd' => env::var("CREDENTIALS_DIRECTORY").unwrap_or("".to_string()),
         'E' => {
-            if context.root {
+            if root {
                 "/etc".into()
             } else {
                 env::var("XDG_CONFIG_HOME").unwrap_or("~/.config".to_string())
@@ -69,7 +54,7 @@ pub(crate) fn resolve(
         }
         'f' => filename.to_string(),
         'g' => {
-            if context.root {
+            if root {
                 "root".into()
             } else {
                 Group::from_gid(Gid::current())
@@ -78,20 +63,20 @@ pub(crate) fn resolve(
             }
         }
         'G' => {
-            if context.root {
+            if root {
                 "0".into()
             } else {
                 Gid::current().to_string()
             }
         }
         'h' => {
-            if context.root {
+            if root {
                 "/root".into()
             } else {
                 env::var("HOME").unwrap_or("~".to_string())
             }
         }
-        'H' => context.uts.nodename().to_string_lossy().to_string(),
+        'H' => UTS_NAME.nodename().to_string_lossy().to_string(),
         'i' => {
             if let UnitType::Instance(instance_name, _) = unit_type(filename)? {
                 escape(instance_name)
@@ -135,8 +120,7 @@ pub(crate) fn resolve(
                     .to_string()
             }
         }
-        'l' => context
-            .uts
+        'l' => UTS_NAME
             .nodename()
             .to_string_lossy()
             .split('.')
@@ -144,7 +128,7 @@ pub(crate) fn resolve(
             .unwrap()
             .to_string(),
         'L' => {
-            if context.root {
+            if root {
                 "/var/log".into()
             } else {
                 env::var("XDG_STATE_HOME")
@@ -152,15 +136,14 @@ pub(crate) fn resolve(
             }
         }
         'm' => fs::read_to_string("/etc/machine-id").expect("Failed to read machine-id."),
-        'M' => context
-            .os_release
+        'M' => OS_RELEASE
             .extra
             .get("IMAGE_ID")
             .unwrap_or(&"".to_string())
             .into(),
         'n' => escape(filename),
         'N' => escape(filename.split(".").nth(0).unwrap()),
-        'o' => context.os_release.id.to_string(),
+        'o' => OS_RELEASE.id.to_string(),
         'p' => {
             if let UnitType::Instance(instance_name, _) = unit_type(filename)? {
                 escape(instance_name)
@@ -175,8 +158,7 @@ pub(crate) fn resolve(
                 filename.split('.').nth(0).unwrap().to_string()
             }
         }
-        'q' => context
-            .uts
+        'q' => UTS_NAME
             .nodename()
             .to_string_lossy()
             .split('.')
@@ -185,14 +167,14 @@ pub(crate) fn resolve(
             .to_string(),
         's' => env::var("SHELL").unwrap_or("".to_string()),
         'S' => {
-            if context.root {
+            if root {
                 "/var/lib".into()
             } else {
                 env::var("XDG_STATE_HOME").unwrap_or("~/.local/share".to_string())
             }
         }
         't' => {
-            if context.root {
+            if root {
                 "/run".into()
             } else {
                 env::var("XDG_RUNTIME_DIR").unwrap_or(format!("/run/user/{}", Uid::current()))
@@ -204,13 +186,12 @@ pub(crate) fn resolve(
             .expect("Failed to read user name.")
             .map_or("".to_string(), |x| x.name),
         'U' => Uid::current().to_string(),
-        'v' => context.uts.release().to_string_lossy().to_string(),
+        'v' => UTS_NAME.release().to_string_lossy().to_string(),
         'V' => env::var("TMPDIR").unwrap_or(
             env::var("TEMP").unwrap_or(env::var("TMP").unwrap_or("/var/tmp".to_string())),
         ),
-        'w' => context.os_release.version_id.to_string(),
-        'W' => context
-            .os_release
+        'w' => OS_RELEASE.version_id.to_string(),
+        'W' => OS_RELEASE
             .extra
             .get("VARIANT_ID")
             .unwrap_or(&"".to_string())
