@@ -10,6 +10,12 @@ example:
 template:
 	cargo run --example template
 
-dropin:
+dropins:
 	cargo run --example dropins
+
+subdir:
+	cargo run --example subdir
+
+specifiers:
+	cargo run --example specifiers
 
