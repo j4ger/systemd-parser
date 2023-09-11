@@ -2,7 +2,8 @@
   "packages": [
     "taplo@latest",
     "cargo-expand@latest",
-    "tokei@latest"
+    "tokei@latest",
+    "cargo-flamegraph@latest"
   ],
   "shell": {
     "init_hook": [

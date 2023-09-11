@@ -128,16 +128,15 @@ impl<'a> Iterator for SectionParser<'a> {
                 if item.as_rule() == Rule::value_block {
                     value.push_str(item.as_str());
                 } else {
-                    value.push_str(
-                        resolve(
-                            item.as_str().chars().nth(0).unwrap(),
-                            self.root,
-                            self.filename.as_ref(),
-                            self.path,
-                        )
-                        .unwrap_or("".to_string())
-                        .as_str(),
-                    );
+                    resolve(
+                        &mut value,
+                        item.as_str().chars().nth(0).unwrap(),
+                        self.root,
+                        self.filename.as_ref(),
+                        self.path,
+                    )
+                    .map_err(|x| log::warn!("Error occured while resolving specifier: {}", x))
+                    .ok();
                 }
             }
 

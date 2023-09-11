@@ -14,88 +14,116 @@ use std::{env, fs, path::Path};
 static OS_RELEASE: Lazy<OsRelease> =
     Lazy::new(|| OsRelease::new().expect("Failed to read os-release."));
 static UTS_NAME: Lazy<UtsName> = Lazy::new(|| uname().expect("Failed to read system information."));
+static BOOT_ID: Lazy<String> = Lazy::new(|| {
+    fs::read_to_string("/proc/sys/kernel/random/boot_id").expect("Failed to read boot_id.")
+});
+static MACHINE_ID: Lazy<String> =
+    Lazy::new(|| fs::read_to_string("/etc/machine-id").expect("Failed to read machine_id."));
+static CURRENT_UID: Lazy<Uid> = Lazy::new(|| Uid::current());
+static CURRENT_GID: Lazy<Gid> = Lazy::new(|| Gid::current());
 
 // return Cow?
 pub(crate) fn resolve(
+    result: &mut String,
     specifier: char,
     root: bool,
     filename: &str,
     path: &Path,
-) -> Result<String, Error> {
-    let result = match specifier {
-        'a' => UTS_NAME.machine().to_string_lossy().to_string(),
-        'A' => OS_RELEASE
-            .extra
-            .get("IMAGE_VERSION")
-            .unwrap_or(&"".to_string())
-            .into(),
-        'b' => {
-            fs::read_to_string("/proc/sys/kernel/random/boot_id").expect("Failed to read boot_id.")
+) -> Result<(), Error> {
+    match specifier {
+        'a' => {
+            if let Some(res) = UTS_NAME.machine().to_str() {
+                result.push_str(res);
+            }
         }
-        'B' => OS_RELEASE
-            .extra
-            .get("BUILD_ID")
-            .unwrap_or(&"".to_string())
-            .into(),
+        'A' => {
+            if let Some(res) = OS_RELEASE.extra.get("IMAGE_VERSION") {
+                result.push_str(res);
+            }
+        }
+        'b' => result.push_str(&BOOT_ID),
+        'B' => {
+            if let Some(res) = OS_RELEASE.extra.get("BUILD_ID") {
+                result.push_str(res);
+            }
+        }
         'C' => {
             if root {
-                "/var/cache".into()
+                result.push_str("/var/cache");
             } else {
-                env::var("XDG_CACHE_HOME").unwrap_or("~/.cache".to_string())
+                if let Ok(res) = env::var("XDG_CACHE_HOME") {
+                    result.push_str(&res);
+                } else {
+                    result.push_str("~/.cache");
+                }
             }
         }
-        'd' => env::var("CREDENTIALS_DIRECTORY").unwrap_or("".to_string()),
+        'd' => {
+            if let Ok(res) = env::var("CREDENTIALS_DIRECTORY") {
+                result.push_str(&res);
+            }
+        }
         'E' => {
             if root {
-                "/etc".into()
+                result.push_str("/etc");
             } else {
-                env::var("XDG_CONFIG_HOME").unwrap_or("~/.config".to_string())
+                if let Ok(res) = env::var("XDG_CONFIG_HOME") {
+                    result.push_str(&res);
+                } else {
+                    result.push_str("~/.config");
+                }
             }
         }
-        'f' => filename.to_string(),
+        'f' => result.push_str(filename),
         'g' => {
             if root {
-                "root".into()
+                result.push_str("root");
             } else {
-                Group::from_gid(Gid::current())
-                    .expect("Failed to read current group name.")
-                    .map_or("".into(), |x| x.name)
+                if let Some(gid) =
+                    Group::from_gid(*CURRENT_GID).expect("Failed to read current group info.")
+                {
+                    result.push_str(&gid.name);
+                }
             }
         }
         'G' => {
             if root {
-                "0".into()
+                result.push_str("0");
             } else {
-                Gid::current().to_string()
+                result.push_str(&CURRENT_GID.to_string());
             }
         }
         'h' => {
             if root {
-                "/root".into()
+                result.push_str("/root");
             } else {
-                env::var("HOME").unwrap_or("~".to_string())
+                if let Ok(res) = env::var("HOME") {
+                    result.push_str(&res);
+                } else {
+                    result.push_str("~");
+                }
             }
         }
-        'H' => UTS_NAME.nodename().to_string_lossy().to_string(),
+        'H' => {
+            if let Some(res) = UTS_NAME.nodename().to_str() {
+                result.push_str(res);
+            }
+        }
         'i' => {
             if let UnitType::Instance(instance_name, _) = unit_type(filename)? {
-                escape(instance_name)
-            } else {
-                "".to_string()
+                result.push_str(&escape(instance_name));
             }
         }
         'I' => {
             if let UnitType::Instance(instance_name, _) = unit_type(filename)? {
-                instance_name.to_string()
-            } else {
-                "".to_string()
+                result.push_str(instance_name);
             }
         }
         'j' => {
             if let UnitType::Instance(instance_name, _) = unit_type(filename)? {
-                escape(instance_name.split('-').last().unwrap())
+                result.push_str(&escape(instance_name.split('-').last().unwrap()));
             } else {
-                escape(
+                result.push_str(&escape(
                     filename
                         .split('.')
                         .nth(0)
@@ -103,107 +131,154 @@ pub(crate) fn resolve(
                         .split('-')
                         .last()
                         .unwrap(),
-                )
+                ));
             }
         }
         'J' => {
             if let UnitType::Instance(instance_name, _) = unit_type(filename)? {
-                instance_name.split('-').last().unwrap().to_string()
+                result.push_str(instance_name.split('-').last().unwrap());
             } else {
-                filename
-                    .split('.')
-                    .nth(0)
-                    .unwrap()
-                    .split('-')
-                    .last()
-                    .unwrap()
-                    .to_string()
+                result.push_str(
+                    filename
+                        .split('.')
+                        .nth(0)
+                        .unwrap()
+                        .split('-')
+                        .last()
+                        .unwrap(),
+                );
             }
         }
-        'l' => UTS_NAME
-            .nodename()
-            .to_string_lossy()
-            .split('.')
-            .nth(0)
-            .unwrap()
-            .to_string(),
+        'l' => result.push_str(
+            UTS_NAME
+                .nodename()
+                .to_string_lossy()
+                .split('.')
+                .nth(0)
+                .unwrap(),
+        ),
         'L' => {
             if root {
-                "/var/log".into()
+                result.push_str("/var/log");
             } else {
-                env::var("XDG_STATE_HOME")
-                    .map_or("~/.local/state/log".into(), |x| format!("{x}/log"))
+                if let Ok(res) = env::var("XDG_STATE_HOME") {
+                    result.push_str(&res);
+                    result.push_str("/log");
+                } else {
+                    result.push_str("~/.local/state/log");
+                }
             }
         }
-        'm' => fs::read_to_string("/etc/machine-id").expect("Failed to read machine-id."),
-        'M' => OS_RELEASE
-            .extra
-            .get("IMAGE_ID")
-            .unwrap_or(&"".to_string())
-            .into(),
-        'n' => escape(filename),
-        'N' => escape(filename.split(".").nth(0).unwrap()),
-        'o' => OS_RELEASE.id.to_string(),
+        'm' => result.push_str(&MACHINE_ID),
+        'M' => {
+            if let Some(res) = OS_RELEASE.extra.get("IMAGE_ID") {
+                result.push_str(&res)
+            }
+        }
+        'n' => result.push_str(&escape(filename)),
+        'N' => result.push_str(&escape(filename.split(".").nth(0).unwrap())),
+        'o' => result.push_str(&OS_RELEASE.id),
         'p' => {
             if let UnitType::Instance(instance_name, _) = unit_type(filename)? {
-                escape(instance_name)
+                result.push_str(&escape(instance_name));
             } else {
-                escape(filename.split('.').nth(0).unwrap())
+                result.push_str(&escape(filename.split('.').nth(0).unwrap()));
             }
         }
         'P' => {
             if let UnitType::Instance(instance_name, _) = unit_type(filename)? {
-                instance_name.to_string()
+                result.push_str(instance_name);
             } else {
-                filename.split('.').nth(0).unwrap().to_string()
+                result.push_str(filename.split('.').nth(0).unwrap());
             }
         }
-        'q' => UTS_NAME
-            .nodename()
-            .to_string_lossy()
-            .split('.')
-            .nth(0)
-            .unwrap()
-            .to_string(),
-        's' => env::var("SHELL").unwrap_or("".to_string()),
+        'q' => result.push_str(
+            UTS_NAME
+                .nodename()
+                .to_string_lossy()
+                .split('.')
+                .nth(0)
+                .unwrap(),
+        ),
+        's' => {
+            if let Ok(res) = env::var("SHELL") {
+                result.push_str(&res);
+            }
+        }
         'S' => {
             if root {
-                "/var/lib".into()
+                result.push_str("/var/lib");
             } else {
-                env::var("XDG_STATE_HOME").unwrap_or("~/.local/share".to_string())
+                if let Ok(res) = env::var("XDG_STATE_HOME") {
+                    result.push_str(&res);
+                } else {
+                    result.push_str("~/.local/share");
+                }
             }
         }
         't' => {
             if root {
-                "/run".into()
+                result.push_str("/run");
             } else {
-                env::var("XDG_RUNTIME_DIR").unwrap_or(format!("/run/user/{}", Uid::current()))
+                if let Ok(res) = env::var("XDG_RUNTIME_DIR") {
+                    result.push_str(&res);
+                } else {
+                    result.push_str("run/user/");
+                    result.push_str(&CURRENT_UID.to_string());
+                }
             }
         }
-        'T' => env::var("TMPDIR")
-            .unwrap_or(env::var("TEMP").unwrap_or(env::var("TMP").unwrap_or("/tmp".to_string()))),
-        'u' => User::from_uid(Uid::current())
-            .expect("Failed to read user name.")
-            .map_or("".to_string(), |x| x.name),
-        'U' => Uid::current().to_string(),
-        'v' => UTS_NAME.release().to_string_lossy().to_string(),
-        'V' => env::var("TMPDIR").unwrap_or(
-            env::var("TEMP").unwrap_or(env::var("TMP").unwrap_or("/var/tmp".to_string())),
-        ),
-        'w' => OS_RELEASE.version_id.to_string(),
-        'W' => OS_RELEASE
-            .extra
-            .get("VARIANT_ID")
-            .unwrap_or(&"".to_string())
-            .into(),
-        'y' => path.to_string_lossy().to_string(),
-        'Y' => path
-            .parent()
-            .expect("Invalid file path.")
-            .to_string_lossy()
-            .to_string(),
-        '%' => "%".to_string(),
-        _ => "".into(),
+        'T' => {
+            if let Ok(res) = env::var("TMPDIR") {
+                result.push_str(&res);
+            } else if let Ok(res) = env::var("TEMP") {
+                result.push_str(&res);
+            } else if let Ok(res) = env::var("TMP") {
+                result.push_str(&res);
+            } else {
+                result.push_str("/tmp");
+            }
+        }
+        'u' => {
+            if let Some(res) = User::from_uid(*CURRENT_UID).expect("Failed to read user name.") {
+                result.push_str(&res.name);
+            }
+        }
+        'U' => result.push_str(&CURRENT_UID.to_string()),
+        'v' => {
+            if let Some(res) = UTS_NAME.release().to_str() {
+                result.push_str(res);
+            }
+        }
+        'V' => {
+            if let Ok(res) = env::var("TMPDIR") {
+                result.push_str(&res);
+            } else if let Ok(res) = env::var("TEMP") {
+                result.push_str(&res);
+            } else if let Ok(res) = env::var("TMP") {
+                result.push_str(&res);
+            } else {
+                result.push_str("/var/tmp");
+            }
+        }
+        'w' => result.push_str(&OS_RELEASE.version_id),
+        'W' => {
+            if let Some(res) = OS_RELEASE.extra.get("VARIANT_ID") {
+                result.push_str(&res);
+            }
+        }
+        'y' => {
+            if let Some(res) = path.to_str() {
+                result.push_str(&res)
+            }
+        }
+        'Y' => {
+            if let Some(res) = path.parent().expect("Invalid file path.").to_str() {
+                result.push_str(&res)
+            }
+        }
+        '%' => result.push('%'),
+        _ => return Err(Error::InvalidSpecifierError { specifier }),
     };
-    Ok(result)
+    Ok(())
 }

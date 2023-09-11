@@ -69,4 +69,7 @@ pub enum Error {
 
     #[snafu(display("Failed to find unit {}.", name))]
     NoUnitFoundError { name: String },
+
+    #[snafu(display("Invalid specifier: {}", specifier))]
+    InvalidSpecifierError { specifier: char },
 }
